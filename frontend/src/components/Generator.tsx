@@ -292,46 +292,20 @@ export default function Generator() {
           </div>
         </Section>
 
-        {/* Step 4 + 5 */}
+        {/* Step 4 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 }}>
-          <Section number="4" title="Aspect ratio">
+          <Section number="4" title="Variations">
             <div style={{
               display: 'flex', gap: 8, padding: 6, borderRadius: 20,
               background: 'var(--clay-input-bg)', boxShadow: 'var(--shadow-clay-pressed)',
             }}>
-              {ASPECTS.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => setAspect(a.id)}
-                  className={`clay-btn ${aspect === a.id ? 'surface-1' : ''}`}
-                  style={{
-                    flex: 1, height: 68, padding: 0, borderRadius: 16,
-                    flexDirection: 'column', gap: 2,
-                    background: aspect === a.id ? undefined : 'transparent',
-                    color: aspect === a.id ? 'var(--clay-fg)' : 'var(--clay-muted)',
-                    boxShadow: aspect === a.id ? 'var(--shadow-clay-soft)' : 'none',
-                  }}
-                >
-                  <Icon name={a.icon} size={20} />
-                  <div style={{ fontSize: 12, fontWeight: 800 }}>{a.label}</div>
-                  <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.7 }}>{a.dim}</div>
-                </button>
-              ))}
-            </div>
-          </Section>
-
-          <Section number="5" title="Variations">
-            <div style={{
-              display: 'flex', gap: 8, padding: 6, borderRadius: 20,
-              background: 'var(--clay-input-bg)', boxShadow: 'var(--shadow-clay-pressed)',
-            }}>
-              {[1, 2, 3, 4].map((n) => (
+              {[1, 2, 3].map((n) => (
                 <button
                   key={n}
                   onClick={() => setCount(n)}
                   className={count === n ? 'surface-1' : ''}
                   style={{
-                    flex: 1, height: 68, border: 0, borderRadius: 16, cursor: 'pointer',
+                    flex: 1, height: 50, border: 0, borderRadius: 12, cursor: 'pointer',
                     fontFamily: 'Nunito', fontWeight: 900, fontSize: 22,
                     background: count === n ? undefined : 'transparent',
                     color: count === n ? 'var(--clay-accent)' : 'var(--clay-muted)',

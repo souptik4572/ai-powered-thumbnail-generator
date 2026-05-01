@@ -13,10 +13,6 @@ const FACTS = [
 
 const STAGES = [
   { label: 'Reading your headshot',     note: 'Detecting face, eyes, lighting…',  icon: 'user' },
-  { label: 'Extracting subject',         note: 'Removing background cleanly',       icon: 'image' },
-  { label: 'Composing layout',           note: 'Picking a hook layout that works',  icon: 'grid' },
-  { label: 'Rendering text & accents',   note: 'Drawing big bold type',             icon: 'sparkles' },
-  { label: 'Final polish',               note: 'Color grading + export',            icon: 'bolt' },
 ];
 
 export default function Loading() {
