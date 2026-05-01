@@ -142,14 +142,14 @@ async def stream_job(job_id: str):
                             "imagekit_url": thumbnail.imagekit_url,
                             "variants": variants
                         })
-                        yield f"event: thumbnail is ready\ndata: {data}\n\n"
+                        yield f"event: thumbnail_ready\ndata: {data}\n\n"
                     elif thumbnail.status == Status.FAILED.value:
                         data = json.dumps({
                             "thumbnail_id": thumbnail.id,
                             "style_name": thumbnail.style_name,
                             "error": thumbnail.error_message
                         })
-                        yield f"event: thumbnail generation failed\ndata: {data}\n\n"
+                        yield f"event: thumbnail_failed\ndata: {data}\n\n"
                     sent_thumbnails.add(thumbnail.id)
                 all_done = all(thumbnail.status in [
                                Status.UPLOADED.value, Status.FAILED.value] for thumbnail in thumbnails)
@@ -158,7 +158,7 @@ async def stream_job(job_id: str):
                         "job_id": job_id,
                         "status": job.status,
                     })
-                    yield f"event: job completed\n data: {data}"
+                    yield f"event: job_completed\ndata: {data}"
                     return
                 await asyncio.sleep(1.5)
 
