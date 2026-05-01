@@ -11,14 +11,14 @@ export interface User {
 }
 
 export interface LiveThumbnail {
-  thumbnailId: number;
+  thumbnailId: string;
   styleName: string;
   imagekitUrl: string;
   variants: Record<string, string>;
 }
 
 export interface HistoryEntry {
-  jobId: number;
+  jobId: string;
   prompt: string;
   style: string;
   aspect: string;
@@ -30,6 +30,7 @@ export interface HistoryEntry {
 interface AppState {
   // Persisted
   user: User | null;
+  token: string | null;
   theme: Theme;
   accent: Accent;
   showBlobs: boolean;
@@ -43,11 +44,11 @@ interface AppState {
   styleSel: string;
   aspect: string;
   count: number;
-  jobId: number | null;
+  jobId: string | null;
   liveThumbnails: LiveThumbnail[];
 
   // Actions
-  login: (user: User) => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
   toggleTheme: () => void;
   setAccent: (accent: Accent) => void;
@@ -59,7 +60,7 @@ interface AppState {
   setStyleSel: (style: string) => void;
   setAspect: (aspect: string) => void;
   setCount: (count: number) => void;
-  setJobId: (id: number | null) => void;
+  setJobId: (id: string | null) => void;
   addLiveThumbnail: (t: LiveThumbnail) => void;
   clearLiveThumbnails: () => void;
   saveJobToHistory: (entry: HistoryEntry) => void;
@@ -70,6 +71,7 @@ const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       user: null,
+      token: null,
       theme: 'light',
       accent: 'violet',
       showBlobs: true,
@@ -78,14 +80,14 @@ const useAppStore = create<AppState>()(
       headshotPreview: null,
       headshotUrl: null,
       prompt: '',
-      styleSel: 'tutorial',
+      styleSel: 'clean_minimal',
       aspect: 'yt',
       count: 3,
       jobId: null,
       liveThumbnails: [],
 
-      login: (user) => set({ user, screen: 'generator' }),
-      logout: () => set({ user: null, screen: 'auth' }),
+      login: (user, token) => set({ user, token, screen: 'generator' }),
+      logout: () => set({ user: null, token: null, screen: 'auth' }),
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       setAccent: (accent) => set({ accent }),
       setShowBlobs: (showBlobs) => set({ showBlobs }),
@@ -102,17 +104,23 @@ const useAppStore = create<AppState>()(
       saveJobToHistory: (entry) =>
         set((s) => ({ history: [entry, ...s.history.slice(0, 49)] })),
       startNewJob: () =>
-        set({ jobId: null, liveThumbnails: [], headshotPreview: null, headshotUrl: null, prompt: '', styleSel: 'tutorial', aspect: 'yt', count: 3 }),
+        set({ jobId: null, liveThumbnails: [], headshotPreview: null, headshotUrl: null, prompt: '', styleSel: 'clean_minimal', aspect: 'yt', count: 3 }),
     }),
     {
       name: 'hookframe-storage',
       partialize: (s) => ({
         user: s.user,
+        token: s.token,
         theme: s.theme,
         accent: s.accent,
         showBlobs: s.showBlobs,
         history: s.history,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.user && state?.token) {
+          state.screen = 'generator';
+        }
+      },
     }
   )
 );

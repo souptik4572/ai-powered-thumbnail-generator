@@ -261,3 +261,15 @@ storybook-static/
 # OS artifacts
 .DS_Store
 Thumbs.db
+
+# Added by code-review-graph
+.code-review-graph/
+.cursorrules
+.mcp.json
+.claude
+.cursor
+.opencode.json
+.windsurfrules
+AGENTS.md
+CLAUDE.md
+GEMINI.md

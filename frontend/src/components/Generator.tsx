@@ -6,11 +6,24 @@ import Icon from './Icon';
 import FauxThumbnail from './FauxThumbnail';
 
 const STYLES = [
-  { id: 'bold',     label: 'Bold & Dramatic', desc: 'Punchy text, vivid contrast',    grad: 'linear-gradient(135deg,#F472B6,#7C3AED)' },
-  { id: 'minimal',  label: 'Minimal & Clean',  desc: 'Understated, premium feel',       grad: 'linear-gradient(135deg,#FCD34D,#F59E0B)' },
-  { id: 'tutorial', label: 'Tutorial / Tech',  desc: 'Code overlays, badges',          grad: 'linear-gradient(135deg,#38BDF8,#0EA5E9)' },
-  { id: 'vlog',     label: 'Vlog / Lifestyle', desc: 'Warm, candid, expressive',       grad: 'linear-gradient(135deg,#34D399,#10B981)' },
-  { id: 'react',    label: 'Reaction / Hook',  desc: 'Big emotion, callouts',          grad: 'linear-gradient(135deg,#FB923C,#DB2777)' },
+  {
+    id: 'bold_dramatic',
+    label: 'Bold Dramatic',
+    desc: 'High contrast, cinematic lighting, strong composition',
+    grad: 'linear-gradient(135deg,#1F2937,#7F1D1D)',
+  },
+  {
+    id: 'clean_minimal',
+    label: 'Clean Minimal',
+    desc: 'Bright, light background, plenty of whitespace',
+    grad: 'linear-gradient(135deg,#F8FAFC,#E2E8F0)',
+  },
+  {
+    id: 'vibrant_energetic',
+    label: 'Vibrant Energetic',
+    desc: 'Colorful gradients, dynamic angles, energetic contrast',
+    grad: 'linear-gradient(135deg,#0EA5E9,#F97316)',
+  },
 ];
 
 const ASPECTS = [
@@ -39,15 +52,14 @@ function derivedHeadline(prompt: string) {
 }
 
 const STYLE_SUBS: Record<string, string> = {
-  bold: 'BIG ENERGY ONLY', minimal: 'QUIET CRAFT',
-  tutorial: 'BUILD IT FAST', vlog: 'REAL & UNFILTERED', react: 'WAIT FOR IT',
+  bold_dramatic: 'HIGH IMPACT',
+  clean_minimal: 'LESS, BUT BETTER',
+  vibrant_energetic: 'LOUD, BRIGHT, FAST',
 };
 const STYLE_BGS: Record<string, string> = {
-  bold: 'linear-gradient(135deg,#1E1B4B,#831843)',
-  minimal: 'linear-gradient(135deg,#F4F1FA,#E9D5FF)',
-  tutorial: 'linear-gradient(135deg,#0F172A,#134E4A)',
-  vlog: 'linear-gradient(135deg,#7C2D12,#F59E0B)',
-  react: 'linear-gradient(135deg,#1F2937,#7C3AED)',
+  bold_dramatic: 'linear-gradient(135deg,#111827,#7F1D1D)',
+  clean_minimal: 'linear-gradient(135deg,#F8FAFC,#E5E7EB)',
+  vibrant_energetic: 'linear-gradient(135deg,#0F172A,#F97316)',
 };
 
 export default function Generator() {
@@ -58,6 +70,7 @@ export default function Generator() {
     styleSel, setStyleSel,
     aspect, setAspect,
     count, setCount,
+    token,
     setJobId, clearLiveThumbnails, setScreen,
   } = useAppStore();
 
@@ -102,8 +115,10 @@ export default function Generator() {
         setHeadshotUrl(imgUrl);
       }
 
+      if (!token) throw new Error('Not authenticated. Please log in again.');
+
       // Create job
-      const { job_id } = await createJob({ prompt, numThumbnails: count, headshotUrl: imgUrl });
+      const { job_id } = await createJob({ prompt, numThumbnails: count, headshotUrl: imgUrl }, token);
       setJobId(job_id);
       clearLiveThumbnails();
       setScreen('loading');

@@ -22,7 +22,7 @@ const STAGES = [
 export default function Loading() {
   const {
     jobId, count, prompt, styleSel,
-    headshotUrl, aspect,
+    aspect,
     liveThumbnails, addLiveThumbnail, clearLiveThumbnails,
     setScreen, saveJobToHistory,
   } = useAppStore();
@@ -53,7 +53,7 @@ export default function Loading() {
 
     clearLiveThumbnails();
 
-    const es = subscribeToJob(String(jobId), {
+    const es = subscribeToJob(jobId!, {
       onThumbnailReady: (data) => {
         addLiveThumbnail({
           thumbnailId: data.thumbnail_id,

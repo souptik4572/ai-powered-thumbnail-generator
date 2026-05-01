@@ -5,8 +5,6 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, UploadFile, File, APIRouter
 from fastapi.responses import StreamingResponse
-from fastapi.security import OAuth2PasswordBearer
-import jwt
 from sqlmodel import Session, select
 
 from database import get_session
@@ -17,24 +15,11 @@ from models.enums import Status
 from services.generator import process_job, STYLES_ORDER
 from services.imagekit_service import upload_file, get_variants
 from dtos import CreateJobRequest, CreateJobResponse, JobResponse, ThumbnailResponse
-from config import ACCESS_SECRET_TOKEN, JWT_ALGORITHM
+from utils import get_current_user
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(token, ACCESS_SECRET_TOKEN, algorithms=[
-                             JWT_ALGORITHM])  # type: ignore
-        user_id = payload.get("user_id")
-        return user_id
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=401, detail="Invalid authentication credentials")
 
 
 @router.post("/upload-headshot")
@@ -157,6 +142,7 @@ async def stream_job(job_id: str):
                             "variants": variants
                         })
                         yield f"event: thumbnail_ready\ndata: {data}\n\n"
+                        sent_thumbnails.add(thumbnail.id)
                     elif thumbnail.status == Status.FAILED.value:
                         data = json.dumps({
                             "thumbnail_id": thumbnail.id,
@@ -164,7 +150,7 @@ async def stream_job(job_id: str):
                             "error": thumbnail.error_message
                         })
                         yield f"event: thumbnail_failed\ndata: {data}\n\n"
-                    sent_thumbnails.add(thumbnail.id)
+                        sent_thumbnails.add(thumbnail.id)
                 all_done = all(thumbnail.status in [
                                Status.UPLOADED.value, Status.FAILED.value] for thumbnail in thumbnails)
                 if all_done and len(sent_thumbnails) == len(thumbnails):

@@ -1,22 +1,39 @@
 import { useState } from 'react';
 import type { ReactNode, FormEvent } from 'react';
 import useAppStore from '../store/useAppStore';
+import { loginUser, registerUser } from '../api';
 import Icon from './Icon';
 import FauxThumbnail from './FauxThumbnail';
 
 export default function AuthScreen() {
   const { login, toggleTheme, theme } = useAppStore();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [email, setEmail] = useState('alex@creator.studio');
+  const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [pw, setPw] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isLogin = mode === 'login';
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    login({ email, name: name || email.split('@')[0] });
+    setError(null);
+    setLoading(true);
+    try {
+      if (isLogin) {
+        const res = await loginUser({ email, password: pw });
+        login({ email, name: email.split('@')[0] }, res.jwt_token);
+      } else {
+        const res = await registerUser({ email, password: pw, name: name || email.split('@')[0] });
+        login({ email, name: name || email.split('@')[0] }, res.jwt_token);
+      }
+    } catch (err: any) {
+      setError(err.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -169,15 +186,32 @@ export default function AuthScreen() {
               </div>
             )}
 
+            {error && (
+              <div style={{ marginBottom: 16, fontSize: 13, color: '#DC2626', fontWeight: 600, textAlign: 'center' }}>
+                {error}
+              </div>
+            )}
+
             <button
               type="submit"
+              disabled={loading}
               className="clay-btn clay-btn-primary"
               style={{ width: '100%', height: 60, fontSize: 16, marginTop: isLogin ? 0 : 24 }}
             >
-              {isLogin ? 'Log in' : 'Create account'}
-              <Icon name="arrow" size={18} />
+              {loading ? (
+                <>
+                  <Icon name="loader" size={18} className="spinning" />
+                  {isLogin ? 'Logging in…' : 'Creating account…'}
+                </>
+              ) : (
+                <>
+                  {isLogin ? 'Log in' : 'Create account'}
+                  <Icon name="arrow" size={18} />
+                </>
+              )}
             </button>
           </form>
+          <style>{`.spinning { animation: spin-slow 0.8s linear infinite; }`}</style>
 
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
@@ -190,9 +224,9 @@ export default function AuthScreen() {
           </div>
 
           <button
-            onClick={() => login({ email: 'alex@creator.studio', name: 'Alex' })}
+            disabled
             className="clay-btn clay-btn-secondary"
-            style={{ width: '100%', height: 56 }}
+            style={{ width: '100%', height: 56, opacity: 0.5, cursor: 'not-allowed' }}
           >
             <Icon name="google" size={20} stroke={0} /> Continue with Google
           </button>

@@ -4,8 +4,9 @@ import Icon from './Icon';
 import FauxThumbnail from './FauxThumbnail';
 
 const STYLE_LABELS: Record<string, string> = {
-  bold: 'Bold & Dramatic', minimal: 'Minimal & Clean',
-  tutorial: 'Tutorial / Tech', vlog: 'Vlog / Lifestyle', react: 'Reaction / Hook',
+  bold_dramatic: 'Bold Dramatic',
+  clean_minimal: 'Clean Minimal',
+  vibrant_energetic: 'Vibrant Energetic',
 };
 
 const ASPECTS: Record<string, { label: string; dim: string; icon: string; trKey: string }> = {

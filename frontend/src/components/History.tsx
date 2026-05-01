@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useAppStore from '../store/useAppStore';
-import type { HistoryEntry } from '../store/useAppStore';
+import { getThumbnails } from '../api';
+import type { BackendThumbnail } from '../api';
 import Icon from './Icon';
 
 const STYLE_LABELS: Record<string, string> = {
@@ -15,6 +16,32 @@ const STYLE_FILTERS = [
   { id: 'vlog', label: 'Vlog' },
 ];
 
+interface JobGroup {
+  jobId: string;
+  prompt: string;
+  style: string;
+  createdAt: string;
+  thumbnails: BackendThumbnail[];
+}
+
+function groupByJob(thumbnails: BackendThumbnail[]): JobGroup[] {
+  const map = new Map<string, JobGroup>();
+  for (const t of thumbnails) {
+    const key = t.job_id ?? t.id;
+    if (!map.has(key)) {
+      map.set(key, {
+        jobId: key,
+        prompt: t.prompt ?? '',
+        style: t.style_name,
+        createdAt: t.created_at ?? new Date().toISOString(),
+        thumbnails: [],
+      });
+    }
+    map.get(key)!.thumbnails.push(t);
+  }
+  return Array.from(map.values());
+}
+
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
@@ -28,20 +55,35 @@ function timeAgo(iso: string) {
 }
 
 export default function History() {
-  const { history, setScreen, startNewJob } = useAppStore();
+  const { token, setScreen, startNewJob } = useAppStore();
+  const [groups, setGroups] = useState<JobGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
 
-  const filtered = history.filter(
-    (p) =>
-      (filter === 'all' || p.style === filter) &&
-      (q === '' || p.prompt.toLowerCase().includes(q.toLowerCase()))
+  useEffect(() => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    getThumbnails(token)
+      .then((thumbnails) => setGroups(groupByJob(thumbnails)))
+      .catch((err) => setError(err.message ?? 'Failed to load history'))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const filtered = groups.filter(
+    (g) =>
+      (filter === 'all' || g.style === filter) &&
+      (q === '' || g.prompt.toLowerCase().includes(q.toLowerCase()))
   );
 
   const handleNew = () => {
     startNewJob();
     setScreen('generator');
   };
+
+  const totalThumbnails = groups.reduce((acc, g) => acc + g.thumbnails.length, 0);
 
   return (
     <div className="clay-card screen-enter" style={{ padding: 36, borderRadius: 40 }}>
@@ -57,8 +99,7 @@ export default function History() {
             Past generations
           </h2>
           <p style={{ color: 'var(--clay-muted)', fontSize: 15, margin: '6px 0 0' }}>
-            {history.length} job{history.length !== 1 ? 's' : ''} ·{' '}
-            {history.reduce((acc, e) => acc + e.thumbnails.length, 0)} thumbnails total
+            {loading ? 'Loading…' : `${groups.length} job${groups.length !== 1 ? 's' : ''} · ${totalThumbnails} thumbnail${totalThumbnails !== 1 ? 's' : ''} total`}
           </p>
         </div>
         <button onClick={handleNew} className="clay-btn clay-btn-primary" style={{ height: 52, padding: '0 22px' }}>
@@ -103,8 +144,20 @@ export default function History() {
         </div>
       </div>
 
-      {/* Grid */}
-      {history.length === 0 ? (
+      {/* Body */}
+      {loading ? (
+        <LoadingState />
+      ) : error ? (
+        <ErrorState message={error} onRetry={() => {
+          if (!token) return;
+          setLoading(true);
+          setError(null);
+          getThumbnails(token)
+            .then((thumbnails) => setGroups(groupByJob(thumbnails)))
+            .catch((err) => setError(err.message ?? 'Failed to load history'))
+            .finally(() => setLoading(false));
+        }} />
+      ) : groups.length === 0 ? (
         <EmptyHistory onNew={handleNew} />
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--clay-muted)' }}>
@@ -114,15 +167,15 @@ export default function History() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 20 }}>
-          {filtered.map((entry) => <HistoryCard key={entry.jobId} entry={entry} />)}
+          {filtered.map((group) => <HistoryCard key={group.jobId} group={group} />)}
         </div>
       )}
     </div>
   );
 }
 
-function HistoryCard({ entry }: { entry: HistoryEntry }) {
-  const heroThumb = entry.thumbnails[0];
+function HistoryCard({ group }: { group: JobGroup }) {
+  const hero = group.thumbnails[0];
 
   return (
     <div
@@ -136,10 +189,10 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
         boxShadow: 'var(--shadow-clay-pressed)',
         display: 'grid', placeItems: 'center', minHeight: 120,
       }}>
-        {heroThumb ? (
+        {hero?.imagekit_url ? (
           <img
-            src={heroThumb.imagekitUrl}
-            alt={entry.prompt}
+            src={hero.imagekit_url}
+            alt={group.prompt}
             style={{ width: '100%', borderRadius: 12, display: 'block' }}
           />
         ) : (
@@ -150,18 +203,20 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
       {/* Meta */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
         <span className="clay-pill" style={{ background: 'rgba(124,58,237,0.12)', color: 'var(--clay-accent)' }}>
-          {STYLE_LABELS[entry.style] ?? entry.style}
+          {STYLE_LABELS[group.style] ?? group.style}
         </span>
-        <span style={{ fontSize: 11, color: 'var(--clay-muted)', fontWeight: 700 }}>{timeAgo(entry.createdAt)}</span>
+        <span style={{ fontSize: 11, color: 'var(--clay-muted)', fontWeight: 700 }}>{timeAgo(group.createdAt)}</span>
       </div>
 
       {/* Prompt */}
-      <div style={{
-        fontSize: 14, color: 'var(--clay-fg)', lineHeight: 1.45, fontWeight: 500,
-        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-      }}>
-        {entry.prompt}
-      </div>
+      {group.prompt && (
+        <div style={{
+          fontSize: 14, color: 'var(--clay-fg)', lineHeight: 1.45, fontWeight: 500,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
+          {group.prompt}
+        </div>
+      )}
 
       {/* Footer */}
       <div style={{
@@ -170,11 +225,11 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <span style={{ fontSize: 12, color: 'var(--clay-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Icon name="image" size={12} /> {entry.thumbnails.length} thumbnail{entry.thumbnails.length !== 1 ? 's' : ''}
+          <Icon name="image" size={12} /> {group.thumbnails.length} thumbnail{group.thumbnails.length !== 1 ? 's' : ''}
         </span>
-        {heroThumb && (
+        {hero?.imagekit_url && (
           <a
-            href={heroThumb.imagekitUrl}
+            href={hero.imagekit_url}
             download
             target="_blank"
             rel="noopener noreferrer"
@@ -189,6 +244,46 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
           </a>
         )}
       </div>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 20 }}>
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="clay-card surface-2" style={{ padding: 16, borderRadius: 28 }}>
+          <div style={{
+            borderRadius: 20, marginBottom: 14, height: 160,
+            background: 'var(--clay-input-bg)', boxShadow: 'var(--shadow-clay-pressed)',
+            animation: 'clay-breathe 2s ease-in-out infinite',
+            animationDelay: `${i * 0.15}s`,
+          }} />
+          <div style={{ height: 20, borderRadius: 8, background: 'var(--clay-input-bg)', marginBottom: 10, width: '60%' }} />
+          <div style={{ height: 14, borderRadius: 8, background: 'var(--clay-input-bg)', width: '90%' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '80px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+      <div style={{
+        width: 72, height: 72, borderRadius: 24,
+        background: 'rgba(220,38,38,0.12)', color: '#DC2626',
+        display: 'grid', placeItems: 'center',
+      }}>
+        <Icon name="x" size={32} stroke={2} />
+      </div>
+      <div>
+        <div className="font-display" style={{ fontWeight: 900, fontSize: 20, marginBottom: 8 }}>Failed to load history</div>
+        <div style={{ fontSize: 14, color: 'var(--clay-muted)', maxWidth: 340 }}>{message}</div>
+      </div>
+      <button onClick={onRetry} className="clay-btn clay-btn-secondary" style={{ height: 48, padding: '0 24px' }}>
+        <Icon name="refresh" size={16} /> Try again
+      </button>
     </div>
   );
 }

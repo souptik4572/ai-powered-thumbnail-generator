@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 
 from models import Status
@@ -21,6 +22,9 @@ class ThumbnailResponse(BaseModel):
     imagekit_url: str | None = None
     error_message: str | None = None
     variants: dict | None = None
+    job_id: str | None = None
+    prompt: str | None = None
+    created_at: datetime | None = None
 
 
 class JobResponse(BaseModel):
