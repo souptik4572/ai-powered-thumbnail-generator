@@ -1,122 +1,84 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect } from 'react';
+import useAppStore from './store/useAppStore';
+import type { Accent } from './store/useAppStore';
+import BlobField from './components/BlobField';
+import AuthScreen from './components/AuthScreen';
+import TopNav from './components/TopNav';
+import Generator from './components/Generator';
+import Loading from './components/Loading';
+import Results from './components/Results';
+import History from './components/History';
+import Icon from './components/Icon';
 
-function App() {
-  const [count, setCount] = useState(0)
+const ACCENT_PRESETS: Record<Accent, { main: string; light: string; pink: string }> = {
+  violet: { main: '#7C3AED', light: '#A78BFA', pink: '#DB2777' },
+  blue:   { main: '#0EA5E9', light: '#7DD3FC', pink: '#3B82F6' },
+  pink:   { main: '#DB2777', light: '#F472B6', pink: '#A78BFA' },
+  green:  { main: '#10B981', light: '#6EE7B7', pink: '#0EA5E9' },
+  amber:  { main: '#F59E0B', light: '#FCD34D', pink: '#DB2777' },
+};
+
+export default function App() {
+  const { screen, theme, accent, showBlobs } = useAppStore();
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const a = ACCENT_PRESETS[accent] ?? ACCENT_PRESETS.violet;
+    document.documentElement.style.setProperty('--clay-accent', a.main);
+    document.documentElement.style.setProperty('--clay-accent-light', a.light);
+    document.documentElement.style.setProperty('--clay-accent-pink', a.pink);
+  }, [accent]);
+
+  const showShell = screen !== 'auth';
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      {showBlobs && <BlobField />}
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {!showShell ? (
+        <AuthScreen />
+      ) : (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <TopNav />
+          <main style={{
+            flex: 1,
+            padding: '24px 32px 60px',
+            maxWidth: 1440,
+            width: '100%',
+            margin: '0 auto',
+          }}>
+            {screen === 'generator' && <Generator />}
+            {screen === 'loading'   && <Loading />}
+            {screen === 'results'   && <Results />}
+            {screen === 'history'   && <History />}
+          </main>
+          <AppFooter />
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      )}
     </>
-  )
+  );
 }
 
-export default App
+function AppFooter() {
+  return (
+    <footer style={{ maxWidth: 1440, width: '100%', margin: '0 auto', padding: '0 32px 24px' }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '8px', color: 'var(--clay-muted)', fontSize: 12,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Icon name="sparkles" size={13} />
+          © 2026 Hookframe
+        </div>
+        <div style={{ display: 'flex', gap: 18 }}>
+          {['Docs', 'Changelog', 'Support'].map((l) => (
+            <a key={l} href="#" style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>{l}</a>
+          ))}
+        </div>
+      </div>
+    </footer>
+  );
+}
