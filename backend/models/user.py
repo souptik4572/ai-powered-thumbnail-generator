@@ -3,14 +3,15 @@ from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
 
 from models import _uuid, _now
-from enums import UserRole
-from job import Job
-from thumbnail import Thumbnail
+from models.enums import UserRole
+from models.job import Job
+from models.thumbnail import Thumbnail
 
 
 class User(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     email: str = Field(default="")
+    password_hash: str = Field(default="")
     name: Optional[str] = Field(default=None)
     location: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=_now)

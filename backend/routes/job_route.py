@@ -3,20 +3,38 @@ import logging
 import asyncio
 from typing import Optional
 
-from fastapi import Depends, HTTPException, UploadFile, File
+from fastapi import Depends, HTTPException, UploadFile, File, APIRouter
 from fastapi.responses import StreamingResponse
+from fastapi.security import OAuth2PasswordBearer
+import jwt
 from sqlmodel import Session, select
 
 from database import get_session
-from models import Thumbnail, Job, Status
+from models.thumbnail import Thumbnail
+from models.job import Job
+from models.enums import Status
 
 from services.generator import process_job, STYLES_ORDER
 from services.imagekit_service import upload_file, get_variants
 from dtos import CreateJobRequest, CreateJobResponse, JobResponse, ThumbnailResponse
+from config import ACCESS_SECRET_TOKEN, JWT_ALGORITHM
 
-from routes import router
+router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, ACCESS_SECRET_TOKEN, algorithms=[
+                             JWT_ALGORITHM])  # type: ignore
+        user_id = payload.get("user_id")
+        return user_id
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=401, detail="Invalid authentication credentials")
 
 
 @router.post("/upload-headshot")
@@ -32,7 +50,7 @@ async def upload_headshot(file: UploadFile = File(...)):
 
 
 @router.post("/jobs", response_model=CreateJobResponse)
-async def create_job(request: CreateJobRequest, session: Session = Depends(get_session)):
+async def create_job(request: CreateJobRequest, session: Session = Depends(get_session), user_id: str = Depends(get_current_user)):
     if request.num_thumbnails < 1 or request.num_thumbnails > len(STYLES_ORDER):
         raise HTTPException(
             status_code=400, detail=f"num_thumbnails must be between 1 and {len(STYLES_ORDER)}")
@@ -40,11 +58,12 @@ async def create_job(request: CreateJobRequest, session: Session = Depends(get_s
         prompt=request.prompt,
         num_thumbnails=request.num_thumbnails,
         headshot_url=request.headshot_url,
+        user_id=user_id
     )
     session.add(job)
     styles = STYLES_ORDER[:request.num_thumbnails]
     for style in styles:
-        thumbnail = Thumbnail(job_id=job.id, style_name=style)
+        thumbnail = Thumbnail(job_id=job.id, user_id=user_id, style_name=style)
         session.add(thumbnail)
     session.commit()
     # Fire and forget the job processing

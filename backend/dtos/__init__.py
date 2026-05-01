@@ -1,9 +1,8 @@
 from pydantic import BaseModel
 
-from backend.models.enums import Status
+from models import Status
 
 # Request - Response Schemas
-
 
 class CreateJobRequest(BaseModel):
     prompt: str
@@ -31,3 +30,17 @@ class JobResponse(BaseModel):
     headshot_url: str
     status: Status
     thumbnails: list[ThumbnailResponse]
+
+class RegisterUserRequest(BaseModel):
+    email: str
+    password: str
+    name: str
+    location: str | None = None
+    
+class LoginUserRequest(BaseModel):
+    email: str
+    password: str
+    
+class UserResponse(BaseModel):
+    message: str
+    jwt_token: str

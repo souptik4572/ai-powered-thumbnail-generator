@@ -3,9 +3,9 @@ from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
 
 from models import _uuid, _now
-from enums import Status
-from thumbnail import Thumbnail
-from user import User
+from models.enums import Status
+from models.user import User
+from models.thumbnail import Thumbnail
 
 class Job(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)

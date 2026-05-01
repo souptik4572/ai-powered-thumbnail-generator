@@ -1,16 +1,17 @@
 import logging
 from typing import Optional
 
-from fastapi import Depends
+from fastapi import Depends, APIRouter
 from sqlmodel import Session, select
 
 from database import get_session
-from models import Thumbnail, Status
+from models.thumbnail import Thumbnail
+from models.enums import Status
 
 from services.imagekit_service import get_variants
 from dtos import ThumbnailResponse
 
-from routes import router
+router = APIRouter()
 
 logger = logging.getLogger(__name__)
 

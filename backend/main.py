@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AI-Powered Thumbnail Generator",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
