@@ -16,6 +16,7 @@ def _now() -> datetime:
 
 class Status(Enum):
     PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
     GENERATING = "GENERATING"
     UPLOADED = "UPLOADED"
     FAILED = "FAILED"
