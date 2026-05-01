@@ -10,5 +10,3 @@ router = APIRouter(prefix="/api")
 router.include_router(job_router)
 router.include_router(thumbnail_router)
 router.include_router(user_router)
-
-# importing the modules is sufficient because they register routes on `router`

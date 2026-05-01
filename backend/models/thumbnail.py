@@ -1,11 +1,13 @@
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from sqlmodel import Field, SQLModel, Relationship
 
 from models import _uuid, _now
 from models.enums import Status
-from models.user import User
-from models.job import Job
+
+if TYPE_CHECKING:
+    from models.user import User
+    from models.job import Job
 
 class Thumbnail(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)

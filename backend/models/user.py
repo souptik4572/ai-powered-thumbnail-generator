@@ -1,11 +1,13 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import TYPE_CHECKING, Optional, List
 from sqlmodel import Field, SQLModel, Relationship
 
 from models import _uuid, _now
 from models.enums import UserRole
-from models.job import Job
-from models.thumbnail import Thumbnail
+
+if TYPE_CHECKING:
+    from models.job import Job
+    from models.thumbnail import Thumbnail
 
 
 class User(SQLModel, table=True):
@@ -17,6 +19,5 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
     role: str = Field(default=UserRole.USER.value)
-    jobs: List[Job] = Relationship(back_populates="user")
-
-    thumbnails: List[Thumbnail] = Relationship(back_populates="user")
+    jobs: List["Job"] = Relationship(back_populates="user")
+    thumbnails: List["Thumbnail"] = Relationship(back_populates="user")

@@ -1,13 +1,14 @@
 from sqlmodel import Session, select
-from fastapi import Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 import bcrypt
 import jwt
 
 from database import get_session
 from models.user import User
-from routes import router
 from dtos import RegisterUserRequest, LoginUserRequest, UserResponse
 from config import BCRYPT_SALT, ACCESS_SECRET_TOKEN, JWT_ALGORITHM
+
+router = APIRouter()
 
 
 def hash_item(item, is_password=True):

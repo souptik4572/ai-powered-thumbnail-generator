@@ -1,11 +1,13 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import TYPE_CHECKING, Optional, List
 from sqlmodel import Field, SQLModel, Relationship
 
 from models import _uuid, _now
 from models.enums import Status
-from models.user import User
-from models.thumbnail import Thumbnail
+
+if TYPE_CHECKING:
+    from models.user import User
+    from models.thumbnail import Thumbnail
 
 class Job(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
@@ -16,5 +18,5 @@ class Job(SQLModel, table=True):
     status: str = Field(default=Status.PENDING.value)
     created_at: datetime = Field(default_factory=_now)
 
-    thumbnails: List[Thumbnail] = Relationship(back_populates="job")
+    thumbnails: List["Thumbnail"] = Relationship(back_populates="job")
     user: Optional["User"] = Relationship(back_populates="jobs")
