@@ -115,6 +115,31 @@ def get_job(job_id: int, session: Session = Depends(get_session)):
     )
 
 
+@router.get("/thumbnails", response_model=list[ThumbnailResponse])
+def get_all_thumbnails(
+    status: Optional[Status] = None,
+    session: Session = Depends(get_session)
+):
+    query = select(Thumbnail)
+    if status:
+        query = query.where(Thumbnail.status == status)
+    thumbnails = session.exec(query).all()
+    result = []
+    for thumbnail in thumbnails:
+        variants = get_variants(thumbnail.imagekit_url) if thumbnail.imagekit_url else None
+        result.append(
+            ThumbnailResponse(
+                id=thumbnail.id,  # type: ignore
+                style_name=thumbnail.style_name,
+                status=thumbnail.status,  # type: ignore
+                imagekit_url=thumbnail.imagekit_url,
+                error_message=thumbnail.error_message,
+                variants=variants,
+            )
+        )
+    return result
+
+
 @router.get("/jobs/{job_id}/stream")
 async def stream_job(job_id: str):
     async def event_generator():
