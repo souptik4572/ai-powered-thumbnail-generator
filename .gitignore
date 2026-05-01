@@ -260,7 +260,7 @@ storybook-static/
 
 # OS artifacts
 .DS_Store
-Thumbs.db
+*.db
 
 # Added by code-review-graph
 .code-review-graph/
