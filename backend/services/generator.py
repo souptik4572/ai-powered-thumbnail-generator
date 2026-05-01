@@ -12,17 +12,17 @@ logger = logging.getLogger(__name__)
 
 STYLES = {
     "bold_dramatic": (
-        "Create a bold Youtube thumbnail with high contrast, cinematic lighting, dark moody background and powerful composition. ",
+        "Create a bold Youtube thumbnail with high contrast, cinematic lighting, dark moody background and powerful composition. "
         "The person's face should be prominent with a dramatic expression."
     ),
     "clean_minimal": (
-        "Create a clean and minimal Youtube thumbnail with bright lighting, white / light background, mordern professional aesthetic, ",
-        "plenty of whitespace, and sharp clean composition. ",
+        "Create a clean and minimal Youtube thumbnail with bright lighting, white / light background, mordern professional aesthetic, "
+        "plenty of whitespace, and sharp clean composition. "
         "The person should look approachable and professional."
     ),
     "ibrant_energetic": (
-        "Create a vibrant and energetic Youtube thumbnail with colorful gradients, ",
-        "dynamic angles, eye-catching pop art style colors and energetic compostion. ",
+        "Create a vibrant and energetic Youtube thumbnail with colorful gradients, "
+        "dynamic angles, eye-catching pop art style colors and energetic compostion. "
         "The person should have an exciting and engaging expression."
     )
 }
