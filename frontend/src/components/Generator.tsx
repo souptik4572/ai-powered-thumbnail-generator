@@ -26,12 +26,6 @@ const STYLES = [
   },
 ];
 
-const ASPECTS = [
-  { id: 'yt',     label: 'YouTube', dim: '1280×720',  icon: 'tv' },
-  { id: 'shorts', label: 'Shorts',  dim: '1080×1920', icon: 'smartphone' },
-  { id: 'square', label: 'Square',  dim: '1080×1080', icon: 'square' },
-];
-
 const PROMPT_CHIPS = [
   "I'm teaching FastAPI — highlight the framework name",
   'Reaction to the new MacBook M5 — surprised face',
@@ -68,7 +62,6 @@ export default function Generator() {
     setHeadshotPreview, setHeadshotUrl,
     prompt, setPrompt,
     styleSel, setStyleSel,
-    aspect, setAspect,
     count, setCount,
     token,
     setJobId, clearLiveThumbnails, setScreen,

@@ -99,7 +99,11 @@ const useAppStore = create<AppState>()(
       setAspect: (aspect) => set({ aspect }),
       setCount: (count) => set({ count }),
       setJobId: (jobId) => set({ jobId }),
-      addLiveThumbnail: (t) => set((s) => ({ liveThumbnails: [...s.liveThumbnails, t] })),
+      addLiveThumbnail: (t) => set((s) => ({
+        liveThumbnails: s.liveThumbnails.some((x) => x.thumbnailId === t.thumbnailId)
+          ? s.liveThumbnails
+          : [...s.liveThumbnails, t],
+      })),
       clearLiveThumbnails: () => set({ liveThumbnails: [] }),
       saveJobToHistory: (entry) =>
         set((s) => ({ history: [entry, ...s.history.slice(0, 49)] })),

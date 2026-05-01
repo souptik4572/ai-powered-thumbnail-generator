@@ -10,9 +10,9 @@ const STYLE_LABELS: Record<string, string> = {
 };
 
 const ASPECTS: Record<string, { label: string; dim: string; icon: string; trKey: string }> = {
-  yt:     { label: 'YouTube', dim: '1280×720',  icon: 'tv',          trKey: 'yt_thumbnail' },
-  shorts: { label: 'Shorts',  dim: '1080×1920', icon: 'smartphone',  trKey: 'shorts' },
-  square: { label: 'Square',  dim: '1080×1080', icon: 'square',      trKey: 'square_1080x1080' },
+  yt:     { label: 'YouTube', dim: '1280×720',  icon: 'tv',         trKey: 'youtube' },
+  shorts: { label: 'Shorts',  dim: '1080×1920', icon: 'smartphone', trKey: 'shorts' },
+  square: { label: 'Square',  dim: '1080×1080', icon: 'square',     trKey: 'square' },
 };
 
 export default function Results() {
@@ -84,8 +84,8 @@ export default function Results() {
           )}
         </div>
 
-        {/* Variant picker */}
-        {thumbs.length > 0 && (
+        {/* Variant picker — only shown when multiple options exist */}
+        {thumbs.length > 1 && (
           <div style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${thumbs.length}, 1fr)`,
@@ -106,13 +106,13 @@ export default function Results() {
                 <div style={{ borderRadius: 12, overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
                   <img
                     src={v.imagekitUrl}
-                    alt={`Option ${String.fromCharCode(65 + i)}`}
+                    alt={STYLE_LABELS[v.styleName] ?? v.styleName}
                     style={{ width: '100%', borderRadius: 10 }}
                   />
                 </div>
                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div className="font-display" style={{ fontWeight: 800, fontSize: 13 }}>
-                    Option {String.fromCharCode(65 + i)}
+                    {STYLE_LABELS[v.styleName] ?? v.styleName}
                   </div>
                   {picked === i && (
                     <div style={{
@@ -124,7 +124,6 @@ export default function Results() {
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--clay-muted)', marginTop: 2 }}>{v.styleName}</div>
               </button>
             ))}
           </div>
@@ -138,7 +137,7 @@ export default function Results() {
                 Download{' '}
                 {thumbs.length > 0 && (
                   <span style={{ color: 'var(--clay-accent)' }}>
-                    Option {String.fromCharCode(65 + picked)}
+                    {STYLE_LABELS[thumbs[picked]?.styleName] ?? thumbs[picked]?.styleName}
                   </span>
                 )}
               </div>

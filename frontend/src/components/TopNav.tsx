@@ -3,6 +3,7 @@ import Icon from './Icon';
 
 export default function TopNav() {
   const { screen, setScreen, user, logout, theme, toggleTheme } = useAppStore();
+  const dark = theme === 'dark';
 
   const activeTab = screen === 'loading' || screen === 'results' ? 'generator' : screen;
 
@@ -25,14 +26,17 @@ export default function TopNav() {
           }}>
             <Icon name="sparkles" size={20} stroke={2.4} />
           </div>
-          <div className="font-display" style={{ fontWeight: 900, fontSize: 18, lineHeight: 1 }}>Hookframe</div>
+          <div className="font-display" style={{
+            fontWeight: 900, fontSize: 18, lineHeight: 1,
+            color: dark ? 'var(--clay-accent-light)' : 'var(--clay-fg)',
+          }}>Hookframe</div>
         </button>
 
         {/* Tabs */}
         <nav style={{
           marginLeft: 8, display: 'flex', gap: 4,
           padding: 4, borderRadius: 14,
-          background: 'var(--clay-input-bg)',
+          background: dark ? 'rgba(20,15,35,0.6)' : 'var(--clay-input-bg)',
           boxShadow: 'var(--shadow-clay-pressed)',
         }}>
           {[
@@ -67,7 +71,10 @@ export default function TopNav() {
         {/* Credits pill */}
         <div
           className="clay-pill surface-2"
-          style={{ height: 36, padding: '0 12px', color: 'var(--clay-fg)' }}
+          style={{
+            height: 36, padding: '0 12px',
+            color: dark ? 'var(--clay-accent-light)' : 'var(--clay-fg)',
+          }}
         >
           <Icon name="bolt" size={13} />
           <span style={{ fontWeight: 800 }}>24</span>
