@@ -4,7 +4,7 @@ from config import IMAGEKIT_PRIVATE_KEY
 imagekit = ImageKit(private_key=IMAGEKIT_PRIVATE_KEY)
 
 
-def upload_image(file_bytes: bytes, file_name: str, folder: str, content_type: str = "image/jpeg") -> str:
+def upload_file(file_bytes: bytes, file_name: str, folder: str, content_type: str = "image/jpeg") -> str:
     """Uploads an image to ImageKit and returns the CDN URL of the uploaded image."""
     response = imagekit.files.upload(
         file=(file_name, file_bytes, content_type),
