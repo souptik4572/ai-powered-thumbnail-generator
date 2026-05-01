@@ -35,7 +35,7 @@ async def generate_thumbnail(prompt: str, style_prompt: str, headshot_url: str) 
                 "type": "image_generation",
                 "model": "gpt-image-2",
                 "size": "1024x1024",
-                "quality": "standard",
+                "quality": "low",
                 "output_format": "png"
             }  # type: ignore
         ]

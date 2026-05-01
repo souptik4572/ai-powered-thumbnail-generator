@@ -20,7 +20,7 @@ STYLES = {
         "plenty of whitespace, and sharp clean composition. "
         "The person should look approachable and professional."
     ),
-    "ibrant_energetic": (
+    "vibrant_energetic": (
         "Create a vibrant and energetic Youtube thumbnail with colorful gradients, "
         "dynamic angles, eye-catching pop art style colors and energetic compostion. "
         "The person should have an exciting and engaging expression."
@@ -100,6 +100,6 @@ async def process_job(job_id: str):
         all_failed = all(thumbnail.status ==
                          Status.FAILED.value for thumbnail in thumbnails)
         session.get(Job, job_id)
-        job.status = Status.FAILED.value if all_failed else Status.COMPLETED.value  # type: ignore
+        job.status = Status.FAILED.value if all_failed else Status.UPLOADED.value  # type: ignore
         session.add(job)
         session.commit()

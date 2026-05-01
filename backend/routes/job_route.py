@@ -1,12 +1,10 @@
 import json
-import os
 import logging
 import asyncio
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from database import get_session
@@ -14,40 +12,11 @@ from models import Thumbnail, Job, Status
 
 from services.generator import process_job, STYLES_ORDER
 from services.imagekit_service import upload_file, get_variants
+from dtos import CreateJobRequest, CreateJobResponse, JobResponse, ThumbnailResponse
+
+from routes import router
 
 logger = logging.getLogger(__name__)
-
-router = APIRouter(prefix="/api")
-
-# Request - Response Schemas
-
-
-class CreateJobRequest(BaseModel):
-    prompt: str
-    num_thumbnails: int
-    headshot_url: str
-
-
-class CreateJobResponse(BaseModel):
-    job_id: int
-
-
-class ThumbnailResponse(BaseModel):
-    id: int
-    style_name: str
-    status: Status
-    imagekit_url: str | None = None
-    error_message: str | None = None
-    variants: dict | None = None
-
-
-class JobResponse(BaseModel):
-    id: int
-    prompt: str
-    num_thumbnails: int
-    headshot_url: str
-    status: Status
-    thumbnails: list[ThumbnailResponse]
 
 
 @router.post("/upload-headshot")
@@ -59,7 +28,7 @@ async def upload_headshot(file: UploadFile = File(...)):
         folder="headshots",
         content_type=file.content_type or "image/png"
     )
-    return {url: url}
+    return {"url": url}
 
 
 @router.post("/jobs", response_model=CreateJobResponse)
@@ -85,7 +54,7 @@ async def create_job(request: CreateJobRequest, session: Session = Depends(get_s
 
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)
-def get_job(job_id: int, session: Session = Depends(get_session)):
+def get_job(job_id: str, session: Session = Depends(get_session)):
     job = session.get(Job, job_id)
     if not job:
         raise HTTPException(
@@ -126,7 +95,8 @@ def get_all_thumbnails(
     thumbnails = session.exec(query).all()
     result = []
     for thumbnail in thumbnails:
-        variants = get_variants(thumbnail.imagekit_url) if thumbnail.imagekit_url else None
+        variants = get_variants(
+            thumbnail.imagekit_url) if thumbnail.imagekit_url else None
         result.append(
             ThumbnailResponse(
                 id=thumbnail.id,  # type: ignore
