@@ -1,12 +1,32 @@
-from sqlmodel import SQLModel, create_engine, Session
+import os
+
+from sqlmodel import create_engine, Session
+from alembic.config import Config
+from alembic import command
+from sqlalchemy import inspect, text
+
 from config import DATABASE_URL
 
-engine = create_engine(DATABASE_URL, echo=True, connect_args={
-                       "check_same_thread": False})
+engine = create_engine(DATABASE_URL, echo=True, connect_args={"check_same_thread": False})
+
+_ALEMBIC_CFG_PATH = os.path.join(os.path.dirname(__file__), "alembic.ini")
 
 
-def create_tables():
-    SQLModel.metadata.create_all(engine)
+def run_migrations() -> None:
+    alembic_cfg = Config(_ALEMBIC_CFG_PATH)
+
+    with engine.connect() as conn:
+        inspector = inspect(conn)
+        existing_tables = set(inspector.get_table_names())
+
+    # Tables exist but no alembic_version table means the DB was created by
+    # the old create_all() approach. Stamp it at head so Alembic knows the
+    # initial migration is already applied, then continue upgrading normally.
+    core_tables = {"user", "job", "thumbnail"}
+    if core_tables.issubset(existing_tables) and "alembic_version" not in existing_tables:
+        command.stamp(alembic_cfg, "head")
+    else:
+        command.upgrade(alembic_cfg, "head")
 
 
 def get_session():

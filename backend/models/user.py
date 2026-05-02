@@ -8,6 +8,7 @@ from models.enums import UserRole
 if TYPE_CHECKING:
     from models.job import Job
     from models.thumbnail import Thumbnail
+    from models.credits_bucket import CreditsBucket
 
 
 class User(SQLModel, table=True):
@@ -21,3 +22,4 @@ class User(SQLModel, table=True):
     role: str = Field(default=UserRole.USER.value)
     jobs: List["Job"] = Relationship(back_populates="user")
     thumbnails: List["Thumbnail"] = Relationship(back_populates="user")
+    credits_bucket: Optional["CreditsBucket"] = Relationship(back_populates="user")
