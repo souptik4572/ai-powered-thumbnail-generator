@@ -13,3 +13,5 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./thumbnailbuilder.db")
 ACCESS_SECRET_TOKEN = os.getenv("ACCESS_SECRET_TOKEN", None)
 BCRYPT_SALT = int(os.getenv("BCRYPT_SALT", 5))
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", None)
+
+MAX_USERS = int(os.getenv("MAX_USERS", 5))

@@ -1,4 +1,4 @@
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from fastapi import APIRouter, Depends, HTTPException
 import bcrypt
 import jwt
@@ -7,7 +7,7 @@ from models.credits_bucket import CreditsBucket
 from database import get_session
 from models.user import User
 from dtos import RegisterUserRequest, LoginUserRequest, UserResponse, CreditsResponse
-from config import BCRYPT_SALT, ACCESS_SECRET_TOKEN, JWT_ALGORITHM
+from config import BCRYPT_SALT, ACCESS_SECRET_TOKEN, JWT_ALGORITHM, MAX_USERS
 from utils import get_current_user
 
 router = APIRouter()
@@ -29,6 +29,11 @@ def generate_jwt_token(user_id):
 
 @router.post("/users/register")
 def register_user(request: RegisterUserRequest, session: Session = Depends(get_session)):
+    # Count the number of users in the database
+    user_count = session.exec((select(func.count()).select_from(User))).one()
+    if user_count >= MAX_USERS:
+        raise HTTPException(
+            status_code=400, detail="User limit reached. We are working on trying to increase the limit. Please try again later.")
     # Check if user with the same email already exists
     existing_user = session.exec(select(User).where(
         User.email == request.email)).first()

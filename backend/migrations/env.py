@@ -24,6 +24,10 @@ if alembic_config.config_file_name is not None:
 
 target_metadata = SQLModel.metadata
 
+# SQLite lacks native ALTER TABLE support; batch mode rewrites the whole table.
+# PostgreSQL and MySQL handle ALTER TABLE natively, so batch mode is not needed.
+_render_as_batch = DATABASE_URL.startswith("sqlite")
+
 
 def run_migrations_offline() -> None:
     """Run migrations without a live DB connection (generates SQL to stdout)."""
@@ -33,7 +37,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        render_as_batch=True,  # SQLite needs batch mode for ALTER TABLE
+        render_as_batch=_render_as_batch,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -50,8 +54,8 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True,  # SQLite needs batch mode for ALTER TABLE
-            compare_type=True,     # Detect column type changes
+            render_as_batch=_render_as_batch,
+            compare_type=True,
         )
         with context.begin_transaction():
             context.run_migrations()

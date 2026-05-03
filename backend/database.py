@@ -3,11 +3,14 @@ import os
 from sqlmodel import create_engine, Session
 from alembic.config import Config
 from alembic import command
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect
 
 from config import DATABASE_URL
 
-engine = create_engine(DATABASE_URL, echo=True, connect_args={"check_same_thread": False})
+# check_same_thread is only a valid kwarg for SQLite
+_extra: dict = {"connect_args": {"check_same_thread": False}} if DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(DATABASE_URL, echo=True, **_extra)
 
 _ALEMBIC_CFG_PATH = os.path.join(os.path.dirname(__file__), "alembic.ini")
 
