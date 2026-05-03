@@ -4,6 +4,7 @@ import useAppStore from '../store/useAppStore';
 import { getThumbnails } from '../api';
 import type { BackendThumbnail } from '../api';
 import Icon from './Icon';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 const STYLE_LABELS: Record<string, string> = {
   bold: 'Bold', minimal: 'Minimal', tutorial: 'Tutorial', vlog: 'Vlog', react: 'Reaction',
@@ -430,7 +431,7 @@ function HistoryCard({ group }: { group: JobGroup }) {
 
 function LoadingState() {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 20 }}>
+    <div className="history-grid">
       {[0.1, 0.2, 0.35, 0.45, 0.6, 0.7].map((delay, i) => (
         <div key={i} className="clay-card surface-2" style={{ padding: 14, borderRadius: 28 }}>
           <div style={{
@@ -511,6 +512,7 @@ function EmptyHistory({ onNew }: { onNew: () => void }) {
 
 export default function History() {
   const { token, setScreen, startNewJob } = useAppStore();
+  const { isMobile } = useBreakpoint();
   const [groups, setGroups] = useState<JobGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -540,17 +542,17 @@ export default function History() {
   const totalThumbnails = groups.reduce((acc, g) => acc + g.thumbnails.length, 0);
 
   return (
-    <div className="clay-card screen-enter" style={{ padding: 36, borderRadius: 40 }}>
+    <div className="clay-card screen-enter" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40 }}>
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: 16, marginBottom: 28,
+        flexWrap: 'wrap', gap: 16, marginBottom: 24,
       }}>
         <div>
           <div className="clay-pill" style={{ background: 'rgba(124,58,237,0.12)', color: 'var(--clay-accent)', marginBottom: 8 }}>
             <Icon name="history" size={12} /> YOUR HISTORY
           </div>
-          <h2 className="font-display" style={{ margin: 0, fontSize: 36, fontWeight: 900, letterSpacing: '-0.02em' }}>
+          <h2 className="font-display" style={{ margin: 0, fontSize: isMobile ? 26 : 36, fontWeight: 900, letterSpacing: '-0.02em' }}>
             Past generations
           </h2>
           <p style={{ color: 'var(--clay-muted)', fontSize: 15, margin: '6px 0 0' }}>
@@ -567,7 +569,7 @@ export default function History() {
 
       {/* Search + style filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 240, position: 'relative' }}>
+        <div style={{ flex: 1, minWidth: isMobile ? 'auto' : 240, width: isMobile ? '100%' : undefined, position: 'relative' }}>
           <input
             className="clay-input"
             placeholder="Search prompts…"
@@ -621,7 +623,7 @@ export default function History() {
           <div style={{ fontSize: 14, marginTop: 4 }}>Try a different keyword or filter.</div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 20 }}>
+        <div className="history-grid">
           {filtered.map((group) => <HistoryCard key={group.jobId} group={group} />)}
         </div>
       )}

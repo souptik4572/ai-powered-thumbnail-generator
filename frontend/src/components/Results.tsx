@@ -2,6 +2,7 @@ import { useState } from 'react';
 import useAppStore from '../store/useAppStore';
 import Icon from './Icon';
 import FauxThumbnail from './FauxThumbnail';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 const STYLE_LABELS: Record<string, string> = {
   bold_dramatic: 'Bold Dramatic',
@@ -21,6 +22,7 @@ export default function Results() {
     setScreen, clearLiveThumbnails, startNewJob,
   } = useAppStore();
 
+  const { isMobile } = useBreakpoint();
   const [picked, setPicked] = useState(0);
 
   const thumbs = liveThumbnails.length > 0 ? liveThumbnails : [];
@@ -38,10 +40,10 @@ export default function Results() {
   };
 
   return (
-    <div className="screen-enter" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 28, alignItems: 'start' }}>
+    <div className="screen-enter results-layout">
 
       {/* LEFT: hero + grid */}
-      <div className="clay-card" style={{ padding: 36, borderRadius: 40 }}>
+      <div className="clay-card" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40 }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           marginBottom: 24, flexWrap: 'wrap', gap: 12,
@@ -176,7 +178,7 @@ export default function Results() {
       </div>
 
       {/* RIGHT: details */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 24 }}>
+      <div className="results-sidebar">
         <div className="clay-card" style={{ padding: 24, borderRadius: 28 }}>
           <div className="font-display" style={{ fontWeight: 900, fontSize: 18, marginBottom: 16 }}>Generation details</div>
           {[

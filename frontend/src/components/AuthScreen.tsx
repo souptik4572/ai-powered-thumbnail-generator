@@ -37,14 +37,7 @@ export default function AuthScreen() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      padding: 24,
-      gap: 24,
-      position: 'relative',
-    }}>
+    <div className="auth-grid">
       {/* Theme toggle */}
       <button
         onClick={toggleTheme}
@@ -56,7 +49,7 @@ export default function AuthScreen() {
       </button>
 
       {/* LEFT: brand */}
-      <div className="clay-card screen-enter" style={{
+      <div className="auth-brand clay-card screen-enter" style={{
         borderRadius: 48, padding: '48px 56px',
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
         position: 'relative', overflow: 'hidden',
@@ -240,13 +233,6 @@ export default function AuthScreen() {
         </div>
       </div>
 
-      {/* Mobile fallback */}
-      <style>{`
-        @media (max-width: 768px) {
-          .auth-grid { grid-template-columns: 1fr !important; }
-          .auth-brand { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }

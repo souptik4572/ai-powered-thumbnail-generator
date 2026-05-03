@@ -315,3 +315,131 @@ html[data-theme="dark"] .knob { background: #ECE7F5; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================
+   Responsive Layout Utilities
+   ============================================================ */
+
+/* Page shell */
+.page-main {
+  flex: 1;
+  padding: 24px 32px 60px;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+}
+.page-footer {
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 32px 24px;
+}
+.nav-header {
+  padding: 20px 32px 0;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Generator two-column grid */
+.gen-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 28px;
+  align-items: start;
+}
+.gen-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 24px;
+}
+
+/* Results two-column grid */
+.results-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 28px;
+  align-items: start;
+}
+.results-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 24px;
+}
+
+/* History cards grid */
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* Auth screen */
+.auth-grid {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 24px;
+  gap: 24px;
+  position: relative;
+}
+
+/* Nav label visibility helpers */
+.nav-brand-name { display: inline; }
+
+/* ---- Tablet (≤ 1024px) ---- */
+@media (max-width: 1024px) {
+  .gen-layout,
+  .results-layout {
+    grid-template-columns: 1fr;
+  }
+  .gen-sidebar,
+  .results-sidebar {
+    position: static;
+  }
+}
+
+/* ---- Mobile (≤ 640px) ---- */
+@media (max-width: 640px) {
+  .blob {
+    height: 36vh;
+    width: 36vh;
+    filter: blur(50px);
+    opacity: 0.28;
+  }
+
+  .history-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+
+  .page-main {
+    padding: 16px 16px 40px;
+  }
+  .page-footer {
+    padding: 0 16px 16px;
+  }
+  .nav-header {
+    padding: 12px 16px 0;
+  }
+
+  .nav-tab-label,
+  .nav-credits-label,
+  .nav-brand-name {
+    display: none;
+  }
+}
+
+/* ---- Auth mobile (≤ 768px) ---- */
+@media (max-width: 768px) {
+  .auth-grid {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  .auth-brand {
+    display: none;
+  }
+}

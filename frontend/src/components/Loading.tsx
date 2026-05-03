@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import useAppStore from '../store/useAppStore';
 import { subscribeToJob } from '../api';
 import Icon from './Icon';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 const FACTS = [
   'Tip: thumbnails with a face get ~38% more clicks on average.',
@@ -12,7 +13,7 @@ const FACTS = [
 ];
 
 const STAGES = [
-  { label: 'Reading your headshot',     note: 'Detecting face, eyes, lighting…',  icon: 'user' },
+  { label: 'Reading your headshot', note: 'Detecting face, eyes, lighting…', icon: 'user' },
 ];
 
 export default function Loading() {
@@ -23,6 +24,7 @@ export default function Loading() {
     setScreen, saveJobToHistory,
   } = useAppStore();
 
+  const { isMobile } = useBreakpoint();
   const [factIdx, setFactIdx] = useState(0);
   const [stageIdx, setStageIdx] = useState(0);
   const esRef = useRef<EventSource | null>(null);
@@ -97,11 +99,14 @@ export default function Loading() {
   const displayPct = Math.max(progressPct, stageIdx * (100 / STAGES.length));
   const currentStage = STAGES[stageIdx];
 
+  const orbSize = isMobile ? 160 : 220;
+  const orbitRadius = isMobile ? 78 : 110;
+
   return (
-    <div className="clay-card screen-enter" style={{ padding: 48, borderRadius: 48, position: 'relative', overflow: 'hidden' }}>
+    <div className="clay-card screen-enter" style={{ padding: isMobile ? 28 : 48, borderRadius: isMobile ? 28 : 48, position: 'relative', overflow: 'hidden' }}>
       {/* Breathing orb */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 36 }}>
-        <div style={{ position: 'relative', width: 220, height: 220 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28 }}>
+        <div style={{ position: 'relative', width: orbSize, height: orbSize }}>
           <div style={{
             position: 'absolute', inset: 0, borderRadius: 99,
             background: 'linear-gradient(135deg,#A78BFA,#7C3AED)',
@@ -109,15 +114,15 @@ export default function Loading() {
             animation: 'clay-breathe 2.4s ease-in-out infinite',
           }} />
           <div style={{
-            position: 'absolute', inset: 18, borderRadius: 99,
+            position: 'absolute', inset: 16, borderRadius: 99,
             background: 'rgba(255,255,255,0.18)',
             animation: 'spin-slow 6s linear infinite',
             border: '2px dashed rgba(255,255,255,0.5)',
           }} />
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff' }}>
             <div style={{ textAlign: 'center' }}>
-              <Icon name={currentStage.icon} size={44} stroke={2.2} />
-              <div className="font-display" style={{ fontWeight: 900, fontSize: 30, marginTop: 6 }}>
+              <Icon name={currentStage.icon} size={isMobile ? 34 : 44} stroke={2.2} />
+              <div className="font-display" style={{ fontWeight: 900, fontSize: isMobile ? 24 : 30, marginTop: 5 }}>
                 {displayPct}%
               </div>
             </div>
@@ -131,13 +136,13 @@ export default function Loading() {
               animationDirection: i % 2 ? 'reverse' : 'normal',
             }}>
               <div style={{
-                position: 'absolute', left: 110, top: -12,
-                width: 26, height: 26, borderRadius: 8,
+                position: 'absolute', left: orbitRadius, top: -10,
+                width: isMobile ? 20 : 26, height: isMobile ? 20 : 26, borderRadius: 7,
                 background: ['#F472B6', '#38BDF8', '#FCD34D'][i],
                 boxShadow: '0 6px 14px rgba(0,0,0,0.18)',
                 display: 'grid', placeItems: 'center', color: '#fff',
               }}>
-                <Icon name="sparkles" size={14} stroke={2.5} />
+                <Icon name="sparkles" size={isMobile ? 10 : 14} stroke={2.5} />
               </div>
             </div>
           ))}
@@ -145,9 +150,9 @@ export default function Loading() {
       </div>
 
       {/* Headline */}
-      <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <h2 className="font-display" style={{ margin: 0, fontSize: 32, fontWeight: 900 }}>{currentStage.label}</h2>
-        <p style={{ color: 'var(--clay-muted)', fontSize: 15, marginTop: 8 }}>{currentStage.note}</p>
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <h2 className="font-display" style={{ margin: 0, fontSize: isMobile ? 24 : 32, fontWeight: 900 }}>{currentStage.label}</h2>
+        <p style={{ color: 'var(--clay-muted)', fontSize: 14, marginTop: 8 }}>{currentStage.note}</p>
         {received > 0 && (
           <p style={{ color: 'var(--clay-accent)', fontSize: 14, marginTop: 4, fontWeight: 700 }}>
             {received} of {count} thumbnail{count > 1 ? 's' : ''} ready
@@ -162,7 +167,7 @@ export default function Loading() {
           const active = i === stageIdx;
           return (
             <div key={s.label} style={{
-              display: 'flex', alignItems: 'center', gap: 14,
+              display: 'flex', alignItems: 'center', gap: 12,
               padding: '12px 16px', borderRadius: 20,
               background: active ? 'rgba(124,58,237,0.1)' : done ? 'rgba(16,185,129,0.08)' : 'var(--clay-input-bg)',
               boxShadow: active ? 'var(--shadow-clay-soft)' : 'var(--shadow-clay-pressed)',
@@ -170,15 +175,16 @@ export default function Loading() {
               opacity: i > stageIdx ? 0.6 : 1,
             }}>
               <div style={{
-                width: 32, height: 32, borderRadius: 10,
+                width: 30, height: 30, borderRadius: 10,
                 display: 'grid', placeItems: 'center',
                 background: done ? '#10B981' : active ? 'var(--clay-accent)' : 'var(--clay-toggle-track)',
                 color: '#fff',
+                flexShrink: 0,
               }}>
                 {done ? <Icon name="check" size={14} stroke={3.5} /> : <Icon name={s.icon} size={14} stroke={2.4} />}
               </div>
               <div style={{ flex: 1 }}>
-                <div className="font-display" style={{ fontWeight: 800, fontSize: 14, color: 'var(--clay-fg)' }}>{s.label}</div>
+                <div className="font-display" style={{ fontWeight: 800, fontSize: 13, color: 'var(--clay-fg)' }}>{s.label}</div>
                 <div style={{ fontSize: 12, color: 'var(--clay-muted)' }}>{s.note}</div>
               </div>
               {active && (
@@ -186,6 +192,7 @@ export default function Loading() {
                   width: 14, height: 14, borderRadius: 99,
                   border: '2.5px solid var(--clay-accent)', borderTopColor: 'transparent',
                   animation: 'spin-slow 0.8s linear infinite',
+                  flexShrink: 0,
                 }} />
               )}
             </div>
@@ -194,11 +201,11 @@ export default function Loading() {
       </div>
 
       {/* Fun fact */}
-      <div style={{ marginTop: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--clay-muted)', fontSize: 13 }}>
+      <div style={{ marginTop: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--clay-muted)', fontSize: 13 }}>
         <Icon name="bolt" size={14} />
         <span style={{ fontWeight: 600 }} key={factIdx}>{FACTS[factIdx]}</span>
       </div>
-      <div style={{ marginTop: 14, fontSize: 12, color: 'var(--clay-muted)', textAlign: 'center' }}>
+      <div style={{ marginTop: 12, fontSize: 12, color: 'var(--clay-muted)', textAlign: 'center' }}>
         Usually 20–60 seconds. Feel free to refill your coffee.
       </div>
     </div>

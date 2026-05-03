@@ -43,13 +43,7 @@ export default function App() {
       ) : (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
           <TopNav />
-          <main style={{
-            flex: 1,
-            padding: '24px 32px 60px',
-            maxWidth: 1440,
-            width: '100%',
-            margin: '0 auto',
-          }}>
+          <main className="page-main" style={{ flex: 1 }}>
             {screen === 'generator' && <Generator />}
             {screen === 'loading'   && <Loading />}
             {screen === 'results'   && <Results />}
@@ -64,7 +58,7 @@ export default function App() {
 
 function AppFooter() {
   return (
-    <footer style={{ maxWidth: 1440, width: '100%', margin: '0 auto', padding: '0 32px 24px' }}>
+    <footer className="page-footer">
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '8px', color: 'var(--clay-muted)', fontSize: 12,
