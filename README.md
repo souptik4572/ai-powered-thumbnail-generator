@@ -16,7 +16,7 @@ Upload a headshot, describe the vibe, and get professional YouTube thumbnails in
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, TypeScript, Vite, Zustand |
+| Frontend | React 19.2.5, TypeScript 6, Vite 8, Zustand 5 |
 | Backend | FastAPI, SQLModel, Alembic, Uvicorn |
 | Database | SQLite (file-based, zero config) |
 | AI | OpenAI Responses API (gpt-4o + gpt-image-2) |
@@ -138,6 +138,161 @@ Open **http://localhost:5173** in your browser, register an account, and start g
     │       └── TopNav.tsx     # Nav + credits display
     └── vite.config.ts        # Proxies /api → localhost:8000
 ```
+
+---
+
+## Frontend
+
+### Versions
+
+| Package | Version |
+|---|---|
+| React | **19.2.5** |
+| TypeScript | ~6.0.2 |
+| Vite | ^8.0.10 |
+| Zustand | ^5.0.12 |
+
+React 19 is used throughout. The project uses the **automatic JSX transform** (`react-jsx`) so there is no need to `import React` in component files. TypeScript is compiled to **ES2023** in bundler mode with strict unused-variable checks enabled.
+
+---
+
+### Screen Flow
+
+The entire app is a single-page application. `App.tsx` renders one screen at a time based on the `screen` value in the Zustand store. `TopNav` is shown on every screen except `auth`.
+
+```
+┌──────────┐   register/login   ┌───────────┐   Generate   ┌─────────┐
+│   auth   │ ─────────────────► │ generator │ ────────────► │ loading │
+└──────────┘                    └───────────┘               └────┬────┘
+                                      ▲                          │ all done
+                                      │    New thumbnail         ▼
+                                ┌─────┴──────┐            ┌─────────┐
+                                │  history   │            │ results │
+                                └────────────┘            └─────────┘
+```
+
+---
+
+### State Management
+
+Global state lives in a single Zustand store (`src/store/useAppStore.ts`) with the `persist` middleware. Only a subset of state is written to `localStorage`; the rest is session-only.
+
+**Persisted across page reloads**
+
+| Key | Type | Description |
+|---|---|---|
+| `user` | `{ name, email } \| null` | Logged-in user info |
+| `token` | `string \| null` | JWT bearer token |
+| `theme` | `'light' \| 'dark'` | UI theme |
+| `accent` | `'violet' \| 'blue' \| 'pink' \| 'green' \| 'amber'` | Accent colour preset |
+| `showBlobs` | `boolean` | Background blob decoration toggle |
+| `history` | `HistoryEntry[]` | Last 50 jobs saved locally |
+
+**Session-only (reset on reload)**
+
+| Key | Type | Description |
+|---|---|---|
+| `screen` | `Screen` | Currently visible screen |
+| `credits` | `number \| null` | Live credit balance (fetched from API) |
+| `headshotPreview` | `string \| null` | Data URL of the selected image |
+| `headshotUrl` | `string \| null` | ImageKit URL after upload |
+| `prompt` | `string` | Generation prompt text |
+| `styleSel` | `string` | Selected style ID |
+| `count` | `number` | Number of thumbnails to generate (1–3) |
+| `jobId` | `string \| null` | Active job ID |
+| `liveThumbnails` | `LiveThumbnail[]` | Thumbnails received via SSE |
+
+On rehydration, if a `token` is found the app navigates straight to `generator` instead of `auth`.
+
+---
+
+### Components
+
+#### `AuthScreen.tsx`
+Split two-column layout — brand panel on the left with an animated `FauxThumbnail` preview, login/register form on the right. Switches between Login and Sign Up via a tab toggle. Makes `POST /api/users/login` or `POST /api/users/register`, then calls `login()` in the store to set the token and navigate.
+
+#### `Generator.tsx`
+Four-step generation form:
+
+1. **Headshot** — drag-and-drop or click-to-upload. File is held in a `useRef`; the actual ImageKit upload happens on Generate, not on file selection.
+2. **Prompt** — free-text textarea (max 240 chars) with one-click example chips.
+3. **Style** — pick one of three visual styles (Bold Dramatic, Clean Minimal, Vibrant Energetic).
+4. **Variations** — choose 1, 2, or 3 thumbnails per job.
+
+A live preview panel on the right renders a `FauxThumbnail` that updates in real-time as the user types. The Generate button is disabled until a headshot is present, the prompt is at least 5 characters, and `credits >= count`. The cost card beneath the button shows the credit cost and the remaining balance in real time — highlighted red when insufficient.
+
+#### `Loading.tsx`
+Displayed while the job is processing. Subscribes to `GET /api/jobs/{job_id}/stream` via the browser `EventSource` API. Shows:
+- An animated breathing orb with a live percentage counter
+- Orbiting sparkle shapes
+- A rotating list of thumbnail tips (cycles every 3.5 s)
+- A progress list that advances as thumbnails arrive
+
+Each `thumbnail_ready` SSE event calls `addLiveThumbnail()` in the store. When `job_completed` fires the store entry is saved and the screen transitions to `results`. A 3-minute safety timeout closes the connection and advances to `results` regardless, preventing the user getting stuck.
+
+#### `Results.tsx`
+Shows the `liveThumbnails` array collected during the loading screen. Each thumbnail has a hover overlay with download buttons for three formats: YouTube (1280×720), Shorts (1080×1920), and Square (1080×1080). Downloads are served as binary blobs via `fetch` + `URL.createObjectURL` so the browser saves the file rather than opening it.
+
+#### `History.tsx`
+Fetches the full thumbnail history from `GET /api/thumbnails` (auth-gated, returns only the current user's uploads). Thumbnails are grouped by `job_id` client-side and rendered in a responsive bento grid:
+- 1 thumbnail → full-width card
+- 2 thumbnails → side-by-side
+- 3 thumbnails → tall left + two stacked right
+
+Includes a search bar (filters by prompt text) and style chip filters. Shows skeleton cards during loading and a friendly empty state for new users. Each card supports the same hover-download overlay as the Results screen.
+
+#### `TopNav.tsx`
+Persistent navigation bar. Fetches the credit balance from `GET /api/users/credits` on mount and whenever `screen` changes (ensuring the count is refreshed after a job completes). The credits pill turns red when the balance reaches 0. Includes theme toggle, user avatar (first letter of name), and logout button.
+
+#### `BlobField.tsx`
+Decorative animated background. Can be toggled off via `showBlobs` in the store.
+
+#### `FauxThumbnail.tsx`
+A purely visual mockup of a YouTube thumbnail used in the auth page and Generator preview. Accepts `headline`, `sub`, `accent`, and `bg` props and renders a styled card — not a real generated image.
+
+#### `Icon.tsx`
+Renders inline SVG icons by name. Used throughout instead of an icon library to keep the bundle small.
+
+---
+
+### API Communication
+
+All API calls are centralised in `src/api.ts`. The Vite dev server proxies every request matching `/api/*` to `http://localhost:8000`, so the frontend never has to know the backend port.
+
+```ts
+// vite.config.ts
+server: {
+  proxy: {
+    '/api': 'http://localhost:8000'
+  }
+}
+```
+
+Protected calls pass the JWT as a standard Bearer token:
+
+```ts
+headers: { Authorization: `Bearer ${token}` }
+```
+
+Real-time updates use the native browser `EventSource` API — no third-party library needed. The SSE connection is opened in `Loading.tsx`, stored in a `useRef`, and explicitly closed when the component unmounts or when the job completes.
+
+---
+
+### Design System
+
+The UI uses a custom **clay morphism** design language built entirely with CSS custom properties — no external component library (no Tailwind, no MUI, no shadcn). Key conventions:
+
+| CSS class | Purpose |
+|---|---|
+| `.clay-card` | White/dark card with soft shadow and rounded corners |
+| `.clay-btn` / `.clay-btn-primary` | Pill-shaped buttons |
+| `.clay-input` | Text inputs and textareas |
+| `.clay-pill` | Small inline badge/chip |
+| `.surface-1` / `.surface-2` / `.surface-3` | Layered surface depths |
+
+Themes are applied by toggling `data-theme="dark"` on `<html>`. All colour tokens are CSS custom properties (`--clay-fg`, `--clay-muted`, `--clay-accent`, etc.) so both themes work with zero JavaScript.
+
+Five accent presets are available — **violet** (default), **blue**, **pink**, **green**, **amber** — controlled via CSS custom properties set dynamically in `App.tsx`.
 
 ---
 
