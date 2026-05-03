@@ -261,6 +261,7 @@ storybook-static/
 # OS artifacts
 .DS_Store
 *.db
+set-heroku-env.sh
 
 # Added by code-review-graph
 .code-review-graph/

@@ -45,6 +45,21 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations against a live DB connection."""
+    # When called from database.run_migrations() at app startup, an existing
+    # connection is passed via config.attributes to avoid a second round-trip.
+    passed_conn = context.config.attributes.get("connection")
+    if passed_conn is not None:
+        context.configure(
+            connection=passed_conn,
+            target_metadata=target_metadata,
+            render_as_batch=_render_as_batch,
+            compare_type=True,
+        )
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
+    # Standalone `alembic upgrade head` path — open a fresh connection.
     connectable = engine_from_config(
         alembic_config.get_section(alembic_config.config_ini_section, {}),
         prefix="sqlalchemy.",
