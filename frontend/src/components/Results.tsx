@@ -3,6 +3,7 @@ import useAppStore from '../store/useAppStore';
 import Icon from './Icon';
 import FauxThumbnail from './FauxThumbnail';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useToast } from '../hooks/useToast';
 
 const STYLE_LABELS: Record<string, string> = {
   bold_dramatic: 'Bold Dramatic',
@@ -16,6 +17,26 @@ const ASPECTS: Record<string, { label: string; dim: string; icon: string; trKey:
   square: { label: 'Square',  dim: '1080×1080', icon: 'square',     trKey: 'square' },
 };
 
+async function downloadUrl(url: string, filename: string): Promise<'downloaded' | 'opened'> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('fetch failed');
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+    return 'downloaded';
+  } catch {
+    window.open(url, '_blank');
+    return 'opened';
+  }
+}
+
 export default function Results() {
   const {
     liveThumbnails, count, prompt, styleSel, aspect,
@@ -23,7 +44,9 @@ export default function Results() {
   } = useAppStore();
 
   const { isMobile } = useBreakpoint();
+  const toast = useToast();
   const [picked, setPicked] = useState(0);
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
 
   const thumbs = liveThumbnails.length > 0 ? liveThumbnails : [];
 
@@ -148,29 +171,44 @@ export default function Results() {
             {Object.entries(ASPECTS).map(([key, a], i) => {
               const url = heroThumb
                 ? (heroThumb.variants?.[a.trKey] ?? heroThumb.imagekitUrl)
-                : '#';
+                : null;
+              const busy = downloadingKey === key;
               return (
-                <a
+                <button
                   key={key}
-                  href={url}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  disabled={!url || busy}
+                  onClick={async () => {
+                    if (!url) return;
+                    setDownloadingKey(key);
+                    const styleName = heroThumb ? (STYLE_LABELS[heroThumb.styleName] ?? heroThumb.styleName) : 'thumbnail';
+                    const result = await downloadUrl(url, `hookframe-${styleName}-${a.trKey}.jpg`);
+                    setDownloadingKey(null);
+                    if (result === 'downloaded') {
+                      toast.success(`${a.label} (${a.dim}) saved!`);
+                    } else {
+                      toast.info('Opening in new tab — direct download unavailable.');
+                    }
+                  }}
                   className="clay-btn"
                   style={{
                     height: 52, padding: '0 16px', borderRadius: 16,
                     fontSize: 13, gap: 8, flexDirection: 'column',
-                    textDecoration: 'none',
                     background: i === 0 ? 'linear-gradient(135deg,#A78BFA,#7C3AED)' : 'var(--clay-card-bg)',
                     color: i === 0 ? '#fff' : 'var(--clay-fg)',
                     boxShadow: i === 0 ? 'var(--shadow-clay-button)' : 'var(--shadow-clay-soft)',
+                    opacity: !url ? 0.5 : 1,
+                    cursor: !url ? 'not-allowed' : busy ? 'wait' : 'pointer',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 13 }}>
-                    <Icon name={a.icon} size={14} /> {a.label}
+                    {busy
+                      ? <div style={{ width: 14, height: 14, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: 99, animation: 'spin-slow 0.7s linear infinite' }} />
+                      : <Icon name={a.icon} size={14} />
+                    }
+                    {a.label}
                   </div>
                   <div style={{ fontSize: 10, opacity: 0.8, fontWeight: 700 }}>{a.dim}</div>
-                </a>
+                </button>
               );
             })}
           </div>

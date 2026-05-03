@@ -1,25 +1,26 @@
-import { useState } from 'react';
-import type { ReactNode, FormEvent } from 'react';
+import React, { useState } from 'react';
+import type { ReactNode } from 'react';
 import useAppStore from '../store/useAppStore';
 import { loginUser, registerUser } from '../api';
 import Icon from './Icon';
 import FauxThumbnail from './FauxThumbnail';
+import { useToast } from '../hooks/useToast';
 
 export default function AuthScreen() {
   const { login, toggleTheme, theme } = useAppStore();
+  const toast = useToast();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [pw, setPw] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const isLogin = mode === 'login';
+  const dark = theme === 'dark';
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
     try {
       if (isLogin) {
@@ -28,9 +29,10 @@ export default function AuthScreen() {
       } else {
         const res = await registerUser({ email, password: pw, name: name || email.split('@')[0] });
         login({ email, name: name || email.split('@')[0] }, res.jwt_token);
+        toast.success('Account created! Welcome to Hookframe.');
       }
-    } catch (err: any) {
-      setError(err.message ?? 'Something went wrong. Please try again.');
+    } catch (err: unknown) {
+      toast.error((err as Error).message ?? 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -41,11 +43,11 @@ export default function AuthScreen() {
       {/* Theme toggle */}
       <button
         onClick={toggleTheme}
-        title="Toggle theme"
+        aria-label={`Switch to ${dark ? 'light' : 'dark'} theme`}
         className="theme-toggle"
         style={{ position: 'absolute', top: 36, right: 36, zIndex: 10 }}
       >
-        <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} />
+        <Icon name={dark ? 'sun' : 'moon'} size={17} />
       </button>
 
       {/* LEFT: brand */}
@@ -96,9 +98,10 @@ export default function AuthScreen() {
       {/* RIGHT: form */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 32px' }}>
         <div className="clay-card screen-enter" style={{ width: '100%', maxWidth: 440, padding: 40 }}>
+
           {/* Tab switcher */}
           <div style={{
-            display: 'flex', gap: 8, padding: 6, borderRadius: 16,
+            display: 'flex', gap: 6, padding: 6, borderRadius: 16,
             background: 'var(--clay-input-bg)', boxShadow: 'var(--shadow-clay-pressed)',
             marginBottom: 28,
           }}>
@@ -106,13 +109,8 @@ export default function AuthScreen() {
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`clay-btn ${mode === m ? 'surface-1' : ''}`}
-                style={{
-                  flex: 1, height: 44, fontSize: 14, padding: 0,
-                  background: mode === m ? undefined : 'transparent',
-                  color: mode === m ? 'var(--clay-fg)' : 'var(--clay-muted)',
-                  boxShadow: mode === m ? 'var(--shadow-clay-soft)' : 'none',
-                }}
+                className={`clay-tab${mode === m ? ' is-active' : ''}`}
+                style={{ flex: 1, height: 46, fontSize: 14, borderRadius: 12 }}
               >
                 {m === 'login' ? 'Log in' : 'Sign up'}
               </button>
@@ -123,7 +121,7 @@ export default function AuthScreen() {
             {isLogin ? 'Welcome back' : 'Create your account'}
           </h2>
           <p style={{ color: 'var(--clay-muted)', marginTop: 8, marginBottom: 28, fontSize: 15 }}>
-            {isLogin ? 'Pick up where you left off.' : 'Free forever — 5 generations a day.'}
+            {isLogin ? 'Pick up where you left off.' : 'Free — up to 5 thumbnails a day.'}
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -143,11 +141,13 @@ export default function AuthScreen() {
               <input
                 type="email"
                 className="clay-input"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
-            <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: isLogin ? 0 : 8 }}>
               <FormLabel icon="lock">Password</FormLabel>
               <div style={{ position: 'relative' }}>
                 <input
@@ -157,10 +157,12 @@ export default function AuthScreen() {
                   value={pw}
                   onChange={(e) => setPw(e.target.value)}
                   style={{ paddingRight: 52 }}
+                  required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
                   style={{
                     position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
                     border: 0, background: 'transparent', color: 'var(--clay-muted)', cursor: 'pointer', padding: 8,
@@ -172,16 +174,10 @@ export default function AuthScreen() {
             </div>
 
             {isLogin && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '12px 0 24px' }}>
                 <a href="#" style={{ color: 'var(--clay-accent)', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
                   Forgot password?
                 </a>
-              </div>
-            )}
-
-            {error && (
-              <div style={{ marginBottom: 16, fontSize: 13, color: '#DC2626', fontWeight: 600, textAlign: 'center' }}>
-                {error}
               </div>
             )}
 
@@ -204,6 +200,7 @@ export default function AuthScreen() {
               )}
             </button>
           </form>
+
           <style>{`.spinning { animation: spin-slow 0.8s linear infinite; }`}</style>
 
           <div style={{
@@ -219,7 +216,8 @@ export default function AuthScreen() {
           <button
             disabled
             className="clay-btn clay-btn-secondary"
-            style={{ width: '100%', height: 56, opacity: 0.5, cursor: 'not-allowed' }}
+            title="Coming soon"
+            style={{ width: '100%', height: 56, opacity: 0.45, cursor: 'not-allowed' }}
           >
             <Icon name="google" size={20} stroke={0} /> Continue with Google
           </button>
@@ -232,7 +230,6 @@ export default function AuthScreen() {
           </p>
         </div>
       </div>
-
     </div>
   );
 }

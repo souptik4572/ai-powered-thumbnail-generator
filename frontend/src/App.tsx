@@ -8,6 +8,7 @@ import Generator from './components/Generator';
 import Loading from './components/Loading';
 import Results from './components/Results';
 import History from './components/History';
+import ToastContainer from './components/ToastContainer';
 import Icon from './components/Icon';
 
 const ACCENT_PRESETS: Record<Accent, { main: string; light: string; pink: string }> = {
@@ -27,9 +28,9 @@ export default function App() {
 
   useEffect(() => {
     const a = ACCENT_PRESETS[accent] ?? ACCENT_PRESETS.violet;
-    document.documentElement.style.setProperty('--clay-accent', a.main);
+    document.documentElement.style.setProperty('--clay-accent',       a.main);
     document.documentElement.style.setProperty('--clay-accent-light', a.light);
-    document.documentElement.style.setProperty('--clay-accent-pink', a.pink);
+    document.documentElement.style.setProperty('--clay-accent-pink',  a.pink);
   }, [accent]);
 
   const showShell = screen !== 'auth';
@@ -43,15 +44,20 @@ export default function App() {
       ) : (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
           <TopNav />
-          <main className="page-main" style={{ flex: 1 }}>
+
+          {/* key forces re-mount → screen-enter animation plays on every navigation */}
+          <main key={screen} className="page-main" style={{ flex: 1 }}>
             {screen === 'generator' && <Generator />}
             {screen === 'loading'   && <Loading />}
             {screen === 'results'   && <Results />}
             {screen === 'history'   && <History />}
           </main>
+
           <AppFooter />
         </div>
       )}
+
+      <ToastContainer />
     </>
   );
 }
@@ -69,7 +75,15 @@ function AppFooter() {
         </div>
         <div style={{ display: 'flex', gap: 18 }}>
           {['Docs', 'Changelog', 'Support'].map((l) => (
-            <a key={l} href="#" style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>{l}</a>
+            <a
+              key={l}
+              href="#"
+              style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700, transition: 'color 150ms' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--clay-accent)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--clay-muted)')}
+            >
+              {l}
+            </a>
           ))}
         </div>
       </div>

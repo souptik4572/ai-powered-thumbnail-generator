@@ -5,6 +5,7 @@ import { getThumbnails } from '../api';
 import type { BackendThumbnail } from '../api';
 import Icon from './Icon';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useToastStore } from '../hooks/useToast';
 
 const STYLE_LABELS: Record<string, string> = {
   bold: 'Bold', minimal: 'Minimal', tutorial: 'Tutorial', vlog: 'Vlog', react: 'Reaction',
@@ -58,9 +59,10 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-async function downloadImage(url: string, filename: string) {
+async function downloadImage(url: string, filename: string): Promise<'downloaded' | 'opened'> {
   try {
     const res = await fetch(url);
+    if (!res.ok) throw new Error('fetch failed');
     const blob = await res.blob();
     const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -70,8 +72,10 @@ async function downloadImage(url: string, filename: string) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(objectUrl);
+    return 'downloaded';
   } catch {
     window.open(url, '_blank');
+    return 'opened';
   }
 }
 
@@ -111,8 +115,13 @@ function VariantButton({
     e.stopPropagation();
     if (busy) return;
     setBusy(true);
-    await downloadImage(url, `hookframe-${styleName}-${variantKey}.jpg`);
+    const result = await downloadImage(url, `hookframe-${styleName}-${variantKey}.jpg`);
     setBusy(false);
+    if (result === 'downloaded') {
+      useToastStore.getState().push(`${label} (${dim}) saved!`, 'success');
+    } else {
+      useToastStore.getState().push('Opening in new tab — direct download unavailable.', 'info');
+    }
   };
 
   const pillBase: React.CSSProperties = {
@@ -585,7 +594,7 @@ export default function History() {
           </span>
         </div>
         <div style={{
-          display: 'flex', gap: 6, padding: 6, borderRadius: 18,
+          display: 'flex', gap: 4, padding: 5, borderRadius: 18,
           background: 'var(--clay-input-bg)', boxShadow: 'var(--shadow-clay-pressed)',
           flexWrap: 'wrap',
         }}>
@@ -593,15 +602,8 @@ export default function History() {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={filter === f.id ? 'surface-1' : ''}
-              style={{
-                height: 44, padding: '0 14px', border: 0, borderRadius: 12,
-                fontFamily: 'Nunito', fontSize: 13, fontWeight: 800, cursor: 'pointer',
-                background: filter === f.id ? undefined : 'transparent',
-                color: filter === f.id ? 'var(--clay-fg)' : 'var(--clay-muted)',
-                boxShadow: filter === f.id ? 'var(--shadow-clay-soft)' : 'none',
-                transition: 'all 150ms',
-              }}
+              className={`clay-tab${filter === f.id ? ' is-active' : ''}`}
+              style={{ height: 40 }}
             >
               {f.label}
             </button>

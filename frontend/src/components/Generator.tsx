@@ -5,6 +5,7 @@ import { uploadHeadshot, createJob } from '../api';
 import Icon from './Icon';
 import FauxThumbnail from './FauxThumbnail';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useToast } from '../hooks/useToast';
 
 const STYLES = [
   {
@@ -69,27 +70,28 @@ export default function Generator() {
   } = useAppStore();
 
   const { isMobile, isTablet } = useBreakpoint();
+  const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const pendingFileRef = useRef<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleFiles = (files: FileList | null) => {
     const f = files?.[0];
     if (!f) return;
+    pendingFileRef.current = f;
     const reader = new FileReader();
     reader.onload = (e) => {
       setHeadshotPreview(e.target?.result as string);
       setHeadshotUrl(null);
     };
     reader.readAsDataURL(f);
-    (fileRef as any)._pendingFile = f;
   };
 
   const clearHeadshot = () => {
     setHeadshotPreview(null);
     setHeadshotUrl(null);
-    (fileRef as any)._pendingFile = null;
+    pendingFileRef.current = null;
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -99,11 +101,10 @@ export default function Generator() {
   const handleGenerate = async () => {
     if (!canGenerate) return;
     setSubmitting(true);
-    setError(null);
     try {
       let imgUrl = headshotUrl;
       if (!imgUrl) {
-        const file = (fileRef as any)._pendingFile as File | null;
+        const file = pendingFileRef.current;
         if (!file) throw new Error('No headshot file available. Please re-upload.');
         imgUrl = await uploadHeadshot(file);
         setHeadshotUrl(imgUrl);
@@ -115,8 +116,8 @@ export default function Generator() {
       setJobId(job_id);
       clearLiveThumbnails();
       setScreen('loading');
-    } catch (err: any) {
-      setError(err.message ?? 'Something went wrong. Please try again.');
+    } catch (err: unknown) {
+      toast.error((err as Error).message ?? 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -361,19 +362,17 @@ export default function Generator() {
           </div>
         </div>
 
-        {error && (
-          <div style={{ marginTop: 12, fontSize: 13, color: '#DC2626', textAlign: 'center', fontWeight: 600 }}>
-            {error}
-          </div>
-        )}
-        {!canGenerate && !error && (
-          <div style={{ marginTop: 12, fontSize: 13, color: credits !== null && credits < count ? '#DC2626' : 'var(--clay-muted)', textAlign: 'center' }}>
+        {!canGenerate && (
+          <p style={{
+            marginTop: 10, fontSize: 13, textAlign: 'center', fontWeight: 600,
+            color: credits !== null && credits < count ? '#EF4444' : 'var(--clay-muted)',
+          }}>
             {!headshotPreview
-              ? 'Add a headshot to continue'
+              ? 'Upload a headshot to continue'
               : prompt.trim().length <= 4
-              ? 'Write at least a few words to continue'
+              ? 'Write at least a few words to describe the vibe'
               : 'Not enough credits'}
-          </div>
+          </p>
         )}
       </div>
 

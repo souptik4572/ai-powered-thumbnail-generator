@@ -3,6 +3,7 @@ import useAppStore from '../store/useAppStore';
 import { subscribeToJob } from '../api';
 import Icon from './Icon';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useToastStore } from '../hooks/useToast';
 
 const FACTS = [
   'Tip: thumbnails with a face get ~38% more clicks on average.',
@@ -64,6 +65,7 @@ export default function Loading() {
         // Continue — fewer thumbnails is acceptable
       },
       onJobCompleted: () => {
+        const ready = useAppStore.getState().liveThumbnails;
         saveJobToHistory({
           jobId: jobId!,
           prompt,
@@ -71,11 +73,16 @@ export default function Loading() {
           aspect,
           count,
           createdAt: new Date().toISOString(),
-          thumbnails: useAppStore.getState().liveThumbnails,
+          thumbnails: ready,
         });
+        useToastStore.getState().push(
+          `${ready.length} thumbnail${ready.length !== 1 ? 's' : ''} ready — pick your favourite!`,
+          'success',
+        );
         setScreen('results');
       },
       onError: () => {
+        useToastStore.getState().push('Generation encountered an issue. Showing available results.', 'warning');
         setScreen('results');
       },
     });
@@ -92,7 +99,7 @@ export default function Loading() {
       es.close();
       clearTimeout(timeout);
     };
-  }, [jobId]);
+  }, [jobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const received = liveThumbnails.length;
   const progressPct = count > 0 ? Math.round((received / count) * 100) : 0;
