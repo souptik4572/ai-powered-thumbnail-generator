@@ -3,7 +3,7 @@ import logging
 
 from sqlmodel import Session, select
 from database import engine
-from models import Thumbnail, Job
+from models import Thumbnail, Job, CreditsBucket
 from services.openai_service import generate_thumbnail
 from services.imagekit_service import upload_file, get_variants
 from models import Status
@@ -99,7 +99,14 @@ async def process_job(job_id: str):
         ).all()
         all_failed = all(thumbnail.status ==
                          Status.FAILED.value for thumbnail in thumbnails)
-        session.get(Job, job_id)
+        job = session.get(Job, job_id)
         job.status = Status.FAILED.value if all_failed else Status.UPLOADED.value  # type: ignore
         session.add(job)
+        if not all_failed:
+            credits_bucket = session.exec(
+                select(CreditsBucket).where(CreditsBucket.user_id == job.user_id)  # type: ignore
+            ).first()
+            if credits_bucket and credits_bucket.credits > 0:
+                credits_bucket.credits -= 1
+                session.add(credits_bucket)
         session.commit()

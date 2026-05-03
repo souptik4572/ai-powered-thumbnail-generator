@@ -11,6 +11,7 @@ from database import get_session
 from models.thumbnail import Thumbnail
 from models.job import Job
 from models.enums import Status
+from models.credits_bucket import CreditsBucket
 
 from services.generator import process_job, STYLES_ORDER
 from services.imagekit_service import upload_file, get_variants
@@ -39,6 +40,11 @@ async def create_job(request: CreateJobRequest, session: Session = Depends(get_s
     if request.num_thumbnails < 1 or request.num_thumbnails > len(STYLES_ORDER):
         raise HTTPException(
             status_code=400, detail=f"num_thumbnails must be between 1 and {len(STYLES_ORDER)}")
+    credits_bucket = session.exec(
+        select(CreditsBucket).where(CreditsBucket.user_id == user_id)
+    ).first()
+    if not credits_bucket or not (credits_bucket.credits >= request.num_thumbnails):
+        raise HTTPException(status_code=402, detail="Insufficient credits")
     job = Job(
         prompt=request.prompt,
         num_thumbnails=request.num_thumbnails,

@@ -17,7 +17,7 @@ export async function registerUser(data: {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).detail ?? `Registration failed: ${res.statusText}`);
+    throw new Error((err as { detail?: string }).detail ?? `Registration failed: ${res.statusText}`);
   }
   return res.json();
 }
@@ -83,6 +83,14 @@ export interface BackendThumbnail {
   job_id: string | null;
   prompt: string | null;
   created_at: string | null;
+}
+
+export async function getCredits(token: string): Promise<{ credits: number }> {
+  const res = await fetch(`${API_BASE}/users/credits`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch credits: ${res.statusText}`);
+  return res.json();
 }
 
 export async function getThumbnails(token: string): Promise<BackendThumbnail[]> {

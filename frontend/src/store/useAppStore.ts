@@ -46,10 +46,12 @@ interface AppState {
   count: number;
   jobId: string | null;
   liveThumbnails: LiveThumbnail[];
+  credits: number | null;
 
   // Actions
   login: (user: User, token: string) => void;
   logout: () => void;
+  setCredits: (credits: number | null) => void;
   toggleTheme: () => void;
   setAccent: (accent: Accent) => void;
   setShowBlobs: (show: boolean) => void;
@@ -85,9 +87,11 @@ const useAppStore = create<AppState>()(
       count: 3,
       jobId: null,
       liveThumbnails: [],
+      credits: null,
 
       login: (user, token) => set({ user, token, screen: 'generator' }),
-      logout: () => set({ user: null, token: null, screen: 'auth' }),
+      logout: () => set({ user: null, token: null, screen: 'auth', credits: null }),
+      setCredits: (credits) => set({ credits }),
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       setAccent: (accent) => set({ accent }),
       setShowBlobs: (showBlobs) => set({ showBlobs }),

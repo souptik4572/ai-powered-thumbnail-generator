@@ -1,9 +1,16 @@
+import { useEffect } from 'react';
 import useAppStore from '../store/useAppStore';
 import Icon from './Icon';
+import { getCredits } from '../api';
 
 export default function TopNav() {
-  const { screen, setScreen, user, logout, theme, toggleTheme } = useAppStore();
+  const { screen, setScreen, user, logout, theme, toggleTheme, token, credits, setCredits } = useAppStore();
   const dark = theme === 'dark';
+
+  useEffect(() => {
+    if (!token) return;
+    getCredits(token).then((data) => setCredits(data.credits)).catch(() => {});
+  }, [token, screen]);
 
   const activeTab = screen === 'loading' || screen === 'results' ? 'generator' : screen;
 
@@ -73,11 +80,13 @@ export default function TopNav() {
           className="clay-pill surface-2"
           style={{
             height: 36, padding: '0 12px',
-            color: dark ? 'var(--clay-accent-light)' : 'var(--clay-fg)',
+            color: credits === 0
+              ? '#DC2626'
+              : dark ? 'var(--clay-accent-light)' : 'var(--clay-fg)',
           }}
         >
           <Icon name="bolt" size={13} />
-          <span style={{ fontWeight: 800 }}>24</span>
+          <span style={{ fontWeight: 800 }}>{credits ?? '…'}</span>
           <span style={{ color: 'var(--clay-muted)', fontWeight: 600 }}>credits</span>
         </div>
 

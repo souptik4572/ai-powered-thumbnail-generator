@@ -63,7 +63,7 @@ export default function Generator() {
     prompt, setPrompt,
     styleSel, setStyleSel,
     count, setCount,
-    token,
+    token, credits,
     setJobId, clearLiveThumbnails, setScreen,
   } = useAppStore();
 
@@ -92,7 +92,8 @@ export default function Generator() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const canGenerate = !!headshotPreview && prompt.trim().length > 4;
+  const hasCredits = credits === null || credits >= count;
+  const canGenerate = !!headshotPreview && prompt.trim().length > 4 && hasCredits;
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
@@ -336,7 +337,13 @@ export default function Generator() {
           <div className="clay-card surface-1" style={{ padding: '12px 18px', borderRadius: 18 }}>
             <div style={{ fontSize: 11, color: 'var(--clay-muted)', fontWeight: 700, letterSpacing: 0.06, textTransform: 'uppercase' }}>Cost</div>
             <div className="font-display" style={{ fontWeight: 900, fontSize: 18, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon name="bolt" size={14} /> {count * 2} credits
+              <Icon name="bolt" size={14} /> {count} credit{count > 1 ? 's' : ''}
+            </div>
+            <div style={{
+              fontSize: 11, marginTop: 2, fontWeight: 700,
+              color: credits !== null && credits < count ? '#DC2626' : 'var(--clay-muted)',
+            }}>
+              {credits !== null ? `${credits} remaining` : '…'}
             </div>
           </div>
         </div>
@@ -347,8 +354,12 @@ export default function Generator() {
           </div>
         )}
         {!canGenerate && !error && (
-          <div style={{ marginTop: 14, fontSize: 13, color: 'var(--clay-muted)', textAlign: 'center' }}>
-            {!headshotPreview ? 'Add a headshot to continue' : 'Write at least a few words to continue'}
+          <div style={{ marginTop: 14, fontSize: 13, color: credits !== null && credits < count ? '#DC2626' : 'var(--clay-muted)', textAlign: 'center' }}>
+            {!headshotPreview
+              ? 'Add a headshot to continue'
+              : prompt.trim().length <= 4
+              ? 'Write at least a few words to continue'
+              : 'Not enough credits'}
           </div>
         )}
       </div>

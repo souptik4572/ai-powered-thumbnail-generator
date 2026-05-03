@@ -3,10 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException
 import bcrypt
 import jwt
 
+from models.credits_bucket import CreditsBucket
 from database import get_session
 from models.user import User
-from dtos import RegisterUserRequest, LoginUserRequest, UserResponse
+from dtos import RegisterUserRequest, LoginUserRequest, UserResponse, CreditsResponse
 from config import BCRYPT_SALT, ACCESS_SECRET_TOKEN, JWT_ALGORITHM
+from utils import get_current_user
 
 router = APIRouter()
 
@@ -44,6 +46,11 @@ def register_user(request: RegisterUserRequest, session: Session = Depends(get_s
     session.add(new_user)
     session.commit()
     session.refresh(new_user)
+    credits_bucket = CreditsBucket(user_id=new_user.id)
+    new_user.credits_bucket = credits_bucket
+    session.add(credits_bucket)
+    session.commit()
+    session.refresh(new_user)
 
     jwt_token = generate_jwt_token(new_user.id)
 
@@ -51,6 +58,16 @@ def register_user(request: RegisterUserRequest, session: Session = Depends(get_s
         message="User registered successfully",
         jwt_token=jwt_token
     )
+
+
+@router.get("/users/credits", response_model=CreditsResponse)
+def get_user_credits(session: Session = Depends(get_session), user_id: str = Depends(get_current_user)):
+    credits_bucket = session.exec(
+        select(CreditsBucket).where(CreditsBucket.user_id == user_id)
+    ).first()
+    if not credits_bucket:
+        raise HTTPException(status_code=404, detail="Credits bucket not found")
+    return CreditsResponse(credits=credits_bucket.credits)
 
 
 @router.post("/users/login")

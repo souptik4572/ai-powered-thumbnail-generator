@@ -48,3 +48,6 @@ class LoginUserRequest(BaseModel):
 class UserResponse(BaseModel):
     message: str
     jwt_token: str
+
+class CreditsResponse(BaseModel):
+    credits: int
