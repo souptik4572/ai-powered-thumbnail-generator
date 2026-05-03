@@ -15,3 +15,12 @@ BCRYPT_SALT = int(os.getenv("BCRYPT_SALT", 5))
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", None)
 
 MAX_USERS = int(os.getenv("MAX_USERS", 5))
+
+CORS_ORIGINS: list[str] = [
+    o.strip()
+    for o in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,https://hookframe.netlify.app",
+    ).split(",")
+    if o.strip()
+]

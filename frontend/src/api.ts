@@ -33,7 +33,7 @@ export async function loginUser(data: {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).detail ?? `Login failed: ${res.statusText}`);
+    throw new Error((err as { detail?: string }).detail ?? `Login failed: ${res.statusText}`);
   }
   return res.json();
 }
