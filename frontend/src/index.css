@@ -595,6 +595,18 @@ html[data-theme="dark"] .knob { background: #ECE7F5; }
   .auth-social-section { display: none; }
 }
 
+/* ── Auth dark-mode contrast fixes ─────────────────────────── */
+/* Re-declare --clay-accent on .auth-grid so descendants inherit the
+   lighter value, bypassing the JS setProperty on <html>. */
+html[data-theme="dark"] .auth-grid {
+  --clay-accent: #A78BFA;
+}
+/* Lift badge opacity so they read on the dark card surface */
+html[data-theme="dark"] .auth-badge {
+  background: rgba(167, 139, 250, 0.18) !important;
+  border-color: rgba(167, 139, 250, 0.38) !important;
+}
+
 /* ── Large screen polish (≥ 1280px) ────────────────────────── */
 @media (min-width: 1280px) {
   .history-grid {

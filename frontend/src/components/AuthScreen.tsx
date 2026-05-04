@@ -82,7 +82,7 @@ export default function AuthScreen() {
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {['Face-swap AI', 'HD export', '3 free', 'Under 60 s'].map(tag => (
-            <span key={tag} style={{
+            <span key={tag} className="auth-badge" style={{
               padding: '8px 16px', borderRadius: 999,
               background: 'rgba(167,139,250,0.12)',
               border: '1px solid rgba(167,139,250,0.25)',
