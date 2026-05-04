@@ -20,8 +20,8 @@ echo "[backend] Activating venv and starting uvicorn..."
   cd "$BACKEND_DIR"
   # shellcheck disable=SC1091
   source venv/bin/activate
-  exec uvicorn main:app --reload --host 0.0.0.0 --port 8000
-) &
+  exec env PYTHONUNBUFFERED=1 uvicorn main:app --reload --host 0.0.0.0 --port 8000
+) 2>&1 | sed -l 's/^/[backend] /' &
 BACKEND_PID=$!
 
 # --- Frontend ---
@@ -29,7 +29,7 @@ echo "[frontend] Starting Vite dev server..."
 (
   cd "$FRONTEND_DIR"
   exec npm run dev
-) &
+) 2>&1 | sed -l 's/^/[frontend] /' &
 FRONTEND_PID=$!
 
 echo ""

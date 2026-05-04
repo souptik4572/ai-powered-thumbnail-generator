@@ -1,8 +1,12 @@
-from openai import AsyncOpenAI
 import base64
+import logging
+
+from openai import AsyncOpenAI
+
 from config import OPENAI_API_KEY
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+logger = logging.getLogger(__name__)
 
 
 async def generate_thumbnail(prompt: str, style_prompt: str, headshot_url: str) -> bytes:
@@ -46,6 +50,16 @@ async def generate_thumbnail(prompt: str, style_prompt: str, headshot_url: str) 
         "- Ensure the final thumbnail is natural, engaging, and platform-appropriate.\n"
     )
 
+    logger.info(
+        "openai_thumbnail_generation_started",
+        extra={
+            "model": "gpt-4o",
+            "image_model": "gpt-image-2",
+            "prompt_length": len(prompt),
+            "style_prompt_length": len(style_prompt),
+            "has_headshot": bool(headshot_url),
+        },
+    )
     response = await client.responses.create(
         model="gpt-4o",
         input=[
@@ -68,10 +82,14 @@ async def generate_thumbnail(prompt: str, style_prompt: str, headshot_url: str) 
         ]
     )
 
-    print("OpenAI response:", response)
-
     for item in response.output:
         if item.type == "image_generation_call" and item.result:
-            return base64.b64decode(item.result)
+            image_bytes = base64.b64decode(item.result)
+            logger.info(
+                "openai_thumbnail_generation_completed",
+                extra={"response_id": response.id, "image_bytes": len(image_bytes)},
+            )
+            return image_bytes
 
+    logger.error("openai_thumbnail_generation_missing_result", extra={"response_id": response.id})
     raise RuntimeError("No image generation result found in OpenAI response")

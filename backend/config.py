@@ -15,6 +15,7 @@ BCRYPT_SALT = int(os.getenv("BCRYPT_SALT", 5))
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", None)
 
 MAX_USERS = int(os.getenv("MAX_USERS", 5))
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 CORS_ORIGINS: list[str] = [
     o.strip()

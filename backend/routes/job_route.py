@@ -18,6 +18,7 @@ from services.generator import process_job, STYLES_ORDER
 from services.imagekit_service import upload_file, get_variants
 from dtos import CreateJobRequest, CreateJobResponse, JobResponse, ThumbnailResponse
 from utils import get_current_user
+from utils.logging import hash_identifier
 
 router = APIRouter()
 
@@ -26,6 +27,11 @@ logger = logging.getLogger(__name__)
 
 @router.post("/upload-headshot")
 async def upload_headshot(file: UploadFile = File(...)):
+    file_name_hash = hash_identifier(file.filename)
+    logger.info(
+        "headshot_upload_started",
+        extra={"file_name_hash": file_name_hash, "content_type": file.content_type},
+    )
     contents = await file.read()
     url = upload_file(
         file_bytes=contents,
@@ -33,18 +39,43 @@ async def upload_headshot(file: UploadFile = File(...)):
         folder="headshots",
         content_type=file.content_type or "image/png"
     )
+    logger.info(
+        "headshot_upload_completed",
+        extra={"file_name_hash": file_name_hash, "content_length": len(contents)},
+    )
     return {"url": url}
 
 
 @router.post("/jobs", response_model=CreateJobResponse)
 async def create_job(request: CreateJobRequest, session: Session = Depends(get_session), user_id: str = Depends(get_current_user)):
+    logger.info(
+        "job_create_requested",
+        extra={
+            "user_id": user_id,
+            "num_thumbnails": request.num_thumbnails,
+            "prompt_length": len(request.prompt),
+            "has_headshot": bool(request.headshot_url),
+        },
+    )
     if request.num_thumbnails < 1 or request.num_thumbnails > len(STYLES_ORDER):
+        logger.warning(
+            "job_create_rejected_invalid_thumbnail_count",
+            extra={"user_id": user_id, "num_thumbnails": request.num_thumbnails},
+        )
         raise HTTPException(
             status_code=400, detail=f"num_thumbnails must be between 1 and {len(STYLES_ORDER)}")
     credits_bucket = session.exec(
         select(CreditsBucket).where(CreditsBucket.user_id == user_id)
     ).first()
     if not credits_bucket or not (credits_bucket.credits >= request.num_thumbnails):
+        logger.warning(
+            "job_create_rejected_insufficient_credits",
+            extra={
+                "user_id": user_id,
+                "requested_thumbnails": request.num_thumbnails,
+                "available_credits": credits_bucket.credits if credits_bucket else 0,
+            },
+        )
         raise HTTPException(status_code=402, detail="Insufficient credits")
     job = Job(
         prompt=request.prompt,
@@ -58,19 +89,26 @@ async def create_job(request: CreateJobRequest, session: Session = Depends(get_s
         thumbnail = Thumbnail(job_id=job.id, user_id=user_id, style_name=style)
         session.add(thumbnail)
     session.commit()
+    logger.info(
+        "job_created",
+        extra={"job_id": job.id, "user_id": user_id, "thumbnail_count": len(styles)},
+    )
     # Fire and forget the job processing
     asyncio.create_task(process_job(job.id))
+    logger.info("job_processing_task_scheduled", extra={"job_id": job.id, "user_id": user_id})
 
     return CreateJobResponse(job_id=job.id)  # type: ignore
 
 
 @router.get("/jobs", response_model=list[JobResponse])
 def get_all_jobs(session: Session = Depends(get_session), user_id: str = Depends(get_current_user)):
+    logger.info("jobs_list_requested", extra={"user_id": user_id})
     jobs = session.exec(
         select(Job).where(Job.user_id == user_id).order_by(col(Job.created_at).desc())
     ).all()
 
     if not jobs:
+        logger.info("jobs_list_completed", extra={"user_id": user_id, "job_count": 0})
         return []
 
     # Single query for all thumbnails — eliminates N+1
@@ -107,13 +145,23 @@ def get_all_jobs(session: Session = Depends(get_session), user_id: str = Depends
                 created_at=job.created_at,
             )
         )
+    logger.info(
+        "jobs_list_completed",
+        extra={
+            "user_id": user_id,
+            "job_count": len(job_responses),
+            "thumbnail_count": len(all_thumbnails),
+        },
+    )
     return job_responses
 
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)
 def get_job(job_id: str, session: Session = Depends(get_session)):
+    logger.info("job_get_requested", extra={"job_id": job_id})
     job = session.get(Job, job_id)
     if not job:
+        logger.warning("job_get_not_found", extra={"job_id": job_id})
         raise HTTPException(
             status_code=404, detail=f"Job with given id {job_id} not found")
     thumbnails = session.exec(select(Thumbnail).where(
@@ -131,6 +179,10 @@ def get_job(job_id: str, session: Session = Depends(get_session)):
                 error_message=thumbnail.error_message,
                 variants=variants)
         )
+    logger.info(
+        "job_get_completed",
+        extra={"job_id": job_id, "status": job.status, "thumbnail_count": len(thumbnail_response)},
+    )
     return JobResponse(
         id=job.id,  # type: ignore
         prompt=job.prompt,
@@ -143,6 +195,8 @@ def get_job(job_id: str, session: Session = Depends(get_session)):
 
 @router.get("/jobs/{job_id}/stream")
 async def stream_job(job_id: str):
+    logger.info("job_stream_opened", extra={"job_id": job_id})
+
     async def event_generator():
         from database import engine
         sent_thumbnails = set()
@@ -151,6 +205,7 @@ async def stream_job(job_id: str):
             with Session(engine) as session:
                 job = session.get(Job, job_id)
                 if not job:
+                    logger.warning("job_stream_not_found", extra={"job_id": job_id})
                     yield f"event: error\ndata: {json.dumps({"error": f"Job not found with id {job_id}"})}"
                     return
                 thumbnails = session.exec(
@@ -169,6 +224,10 @@ async def stream_job(job_id: str):
                             "variants": variants
                         })
                         yield f"event: thumbnail_ready\ndata: {data}\n\n"
+                        logger.info(
+                            "job_stream_thumbnail_ready_sent",
+                            extra={"job_id": job_id, "thumbnail_id": thumbnail.id, "style_name": thumbnail.style_name},
+                        )
                         sent_thumbnails.add(thumbnail.id)
                     elif thumbnail.status == Status.FAILED.value:
                         data = json.dumps({
@@ -177,6 +236,10 @@ async def stream_job(job_id: str):
                             "error": thumbnail.error_message
                         })
                         yield f"event: thumbnail_failed\ndata: {data}\n\n"
+                        logger.info(
+                            "job_stream_thumbnail_failed_sent",
+                            extra={"job_id": job_id, "thumbnail_id": thumbnail.id, "style_name": thumbnail.style_name},
+                        )
                         sent_thumbnails.add(thumbnail.id)
                 all_done = all(thumbnail.status in [
                                Status.UPLOADED.value, Status.FAILED.value] for thumbnail in thumbnails)
@@ -186,6 +249,10 @@ async def stream_job(job_id: str):
                         "status": job.status,
                     })
                     yield f"event: job_completed\ndata: {data}"
+                    logger.info(
+                        "job_stream_completed",
+                        extra={"job_id": job_id, "status": job.status, "thumbnail_count": len(thumbnails)},
+                    )
                     return
                 await asyncio.sleep(1.5)
 
