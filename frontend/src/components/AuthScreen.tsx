@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import useAppStore from '../store/useAppStore';
 import { loginUser, registerUser } from '../api';
 import Icon from './Icon';
-import FauxThumbnail from './FauxThumbnail';
 import { useToast } from '../hooks/useToast';
 
 export default function AuthScreen() {
@@ -81,23 +80,35 @@ export default function AuthScreen() {
           </p>
         </div>
 
-        <div style={{
-          position: 'relative', height: 200,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{ animation: 'clay-float 9s ease-in-out infinite', transform: 'rotate(-2deg)' }}>
-            <FauxThumbnail
-              size="md"
-              style="tutorial"
-              data={{ headline: 'LEARN FASTAPI', sub: 'BUILD APIs FAST', accent: '#10B981', bg: 'linear-gradient(135deg,#0F172A,#134E4A)' }}
-            />
-          </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {['Face-swap AI', 'HD export', '3 free', 'Under 60 s'].map(tag => (
+            <span key={tag} style={{
+              padding: '8px 16px', borderRadius: 999,
+              background: 'rgba(167,139,250,0.12)',
+              border: '1px solid rgba(167,139,250,0.25)',
+              fontSize: 13, fontWeight: 700, color: 'var(--clay-accent)',
+              backdropFilter: 'blur(8px)',
+            }}>{tag}</span>
+          ))}
         </div>
       </div>
 
       {/* RIGHT: form */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 32px' }}>
-        <div className="clay-card screen-enter" style={{ width: '100%', maxWidth: 440, padding: 40 }}>
+        <div className="clay-card screen-enter auth-form-card" style={{ width: '100%', maxWidth: 440, padding: 40 }}>
+
+          {/* Mobile-only logo strip */}
+          <div className="auth-mobile-logo" style={{ display: 'none', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 11,
+              background: 'linear-gradient(135deg,var(--clay-accent-light),var(--clay-accent))',
+              display: 'grid', placeItems: 'center', color: '#fff',
+              boxShadow: 'var(--shadow-clay-button)',
+            }}>
+              <Icon name="sparkles" size={18} stroke={2.4} />
+            </div>
+            <span className="font-display" style={{ fontWeight: 900, fontSize: 20 }}>Hookframe</span>
+          </div>
 
           {/* Tab switcher */}
           <div style={{
@@ -203,24 +214,26 @@ export default function AuthScreen() {
 
           <style>{`.spinning { animation: spin-slow 0.8s linear infinite; }`}</style>
 
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            margin: '24px 0', color: 'var(--clay-muted)', fontSize: 12,
-            fontWeight: 700, letterSpacing: 0.06, textTransform: 'uppercase',
-          }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--clay-divider)' }} />
-            or
-            <div style={{ flex: 1, height: 1, background: 'var(--clay-divider)' }} />
-          </div>
+          <div className="auth-social-section">
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              margin: '24px 0', color: 'var(--clay-muted)', fontSize: 12,
+              fontWeight: 700, letterSpacing: 0.06, textTransform: 'uppercase',
+            }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--clay-divider)' }} />
+              or
+              <div style={{ flex: 1, height: 1, background: 'var(--clay-divider)' }} />
+            </div>
 
-          <button
-            disabled
-            className="clay-btn clay-btn-secondary"
-            title="Coming soon"
-            style={{ width: '100%', height: 56, opacity: 0.45, cursor: 'not-allowed' }}
-          >
-            <Icon name="google" size={20} stroke={0} /> Continue with Google
-          </button>
+            <button
+              disabled
+              className="clay-btn clay-btn-secondary"
+              title="Coming soon"
+              style={{ width: '100%', height: 56, opacity: 0.45, cursor: 'not-allowed' }}
+            >
+              <Icon name="google" size={20} stroke={0} /> Continue with Google
+            </button>
+          </div>
 
           <p style={{ marginTop: 24, fontSize: 13, color: 'var(--clay-muted)', textAlign: 'center' }}>
             By continuing you agree to the{' '}

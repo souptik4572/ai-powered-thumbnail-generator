@@ -520,12 +520,17 @@ html[data-theme="dark"] .knob { background: #ECE7F5; }
 
 /* Auth screen */
 .auth-grid {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 1fr 1fr;
   padding: 24px;
   gap: 24px;
   position: relative;
+}
+
+.auth-brand {
+  overflow: hidden;
 }
 
 /* Nav label visibility */
@@ -576,10 +581,18 @@ html[data-theme="dark"] .knob { background: #ECE7F5; }
 /* ── Auth mobile (≤ 768px) ──────────────────────────────────── */
 @media (max-width: 768px) {
   .auth-grid {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
     grid-template-columns: 1fr;
     padding: 16px;
+    align-items: flex-start;
+    padding-top: 72px; /* clear the absolute theme-toggle */
   }
   .auth-brand { display: none; }
+  .auth-form-card { padding: 28px 24px !important; }
+  .auth-mobile-logo { display: flex !important; }
+  .auth-social-section { display: none; }
 }
 
 /* ── Large screen polish (≥ 1280px) ────────────────────────── */
