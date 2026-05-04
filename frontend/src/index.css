@@ -460,6 +460,9 @@ html[data-theme="dark"] .knob { background: #ECE7F5; }
   gap: 28px;
   align-items: start;
 }
+/* Grid children must not force tracks wider than the viewport */
+.gen-layout > *, .results-layout > * { min-width: 0; }
+
 .gen-sidebar {
   display: flex;
   flex-direction: column;
@@ -482,6 +485,31 @@ html[data-theme="dark"] .knob { background: #ECE7F5; }
   position: sticky;
   top: 24px;
 }
+
+/* Horizontal-scroll row — chips, filter tabs, any nowrap items */
+.scroll-row {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 8px;
+  padding-bottom: 4px; /* preserve shadow clipping */
+}
+.scroll-row::-webkit-scrollbar { display: none; }
+
+/* History filter-tabs container — scrolls on mobile */
+.filter-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 18px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  align-items: center;
+}
+.filter-tabs::-webkit-scrollbar { display: none; }
 
 /* History cards grid */
 .history-grid {
@@ -535,6 +563,14 @@ html[data-theme="dark"] .knob { background: #ECE7F5; }
   .nav-brand-name { display: none; }
 
   .clay-tab { height: 32px; padding: 0 10px; font-size: 12px; }
+
+  /* History filter bar stacks vertically on mobile */
+  .history-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  /* Allow filter-tabs to stretch full width and remain scrollable */
+  .filter-tabs { flex-shrink: 1; min-width: 0; }
 }
 
 /* ── Auth mobile (≤ 768px) ──────────────────────────────────── */

@@ -241,13 +241,15 @@ export default function Generator() {
             onChange={(e) => setPrompt(e.target.value)}
             style={{ minHeight: 100, resize: 'vertical', lineHeight: 1.5, fontSize: 14 }}
           />
-          <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ fontSize: 12, color: 'var(--clay-muted)', fontWeight: 700, alignSelf: 'center', marginRight: 4 }}>TRY:</span>
-            {PROMPT_CHIPS.map((c) => (
-              <button key={c} onClick={() => setPrompt(c)} className="clay-pill surface-1" style={{ border: 0, cursor: 'pointer' }}>
-                {c}
-              </button>
-            ))}
+          <div style={{ marginTop: 10 }}>
+            <div className="scroll-row" style={{ alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--clay-muted)', fontWeight: 700, flexShrink: 0, marginRight: 4 }}>TRY:</span>
+              {PROMPT_CHIPS.map((c) => (
+                <button key={c} onClick={() => setPrompt(c)} className="clay-pill surface-1" style={{ border: 0, cursor: 'pointer', flexShrink: 0 }}>
+                  {c}
+                </button>
+              ))}
+            </div>
           </div>
         </Section>
 
@@ -376,8 +378,8 @@ export default function Generator() {
         )}
       </div>
 
-      {/* RIGHT: live preview */}
-      <div className="gen-sidebar">
+      {/* RIGHT: live preview — hidden on mobile to prevent 480px overflow */}
+      {!isMobile && <div className="gen-sidebar">
         <div className="clay-card" style={{ padding: 22, borderRadius: 32 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <div>
@@ -446,7 +448,7 @@ export default function Generator() {
             ))}
           </ul>
         </div>
-      </div>
+      </div>}
 
       <style>{`.spinning { animation: spin-slow 0.8s linear infinite; }`}</style>
     </div>

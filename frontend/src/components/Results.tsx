@@ -143,7 +143,7 @@ export default function Results() {
               style={{ maxWidth: '100%', borderRadius: 14, boxShadow: '0 12px 30px rgba(20,15,40,0.25)' }}
             />
           ) : (
-            <FauxThumbnail size="xl" style={styleSel} />
+            <FauxThumbnail size={isMobile ? 'md' : 'xl'} style={styleSel} />
           )}
         </div>
 
@@ -194,18 +194,18 @@ export default function Results() {
 
         {/* Download row */}
         <div className="clay-card surface-3" style={{ padding: 18, borderRadius: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div className="font-display" style={{ fontWeight: 800, fontSize: 16 }}>
-                Download{' '}
-                {thumbs.length > 0 && (
-                  <span style={{ color: 'var(--clay-accent)' }}>
-                    {STYLE_LABELS[thumbs[picked]?.styleName] ?? thumbs[picked]?.styleName}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--clay-muted)' }}>Pick the format you need — we'll resize it.</div>
+          <div style={{ marginBottom: 14 }}>
+            <div className="font-display" style={{ fontWeight: 800, fontSize: 16 }}>
+              Download{' '}
+              {thumbs.length > 0 && (
+                <span style={{ color: 'var(--clay-accent)' }}>
+                  {STYLE_LABELS[thumbs[picked]?.styleName] ?? thumbs[picked]?.styleName}
+                </span>
+              )}
             </div>
+            <div style={{ fontSize: 12, color: 'var(--clay-muted)' }}>Pick the format you need — we'll resize it.</div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {Object.entries(ASPECTS).map(([key, a], i) => {
               const url = heroThumb
                 ? (heroThumb.variants?.[a.trKey] ?? heroThumb.imagekitUrl)
@@ -231,6 +231,7 @@ export default function Results() {
                   style={{
                     height: 52, padding: '0 16px', borderRadius: 16,
                     fontSize: 13, gap: 8, flexDirection: 'column',
+                    flex: '1 1 80px',
                     background: i === 0 ? 'linear-gradient(135deg,#A78BFA,#7C3AED)' : 'var(--clay-card-bg)',
                     color: i === 0 ? '#fff' : 'var(--clay-fg)',
                     boxShadow: i === 0 ? 'var(--shadow-clay-button)' : 'var(--shadow-clay-soft)',

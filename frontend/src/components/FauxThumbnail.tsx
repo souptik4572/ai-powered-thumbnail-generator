@@ -33,6 +33,7 @@ export default function FauxThumbnail({ data, headshot, size = 'md', style = 'bo
       position: 'relative', overflow: 'hidden',
       boxShadow: '0 12px 30px rgba(20,15,40,0.25)',
       flexShrink: 0,
+      maxWidth: '100%',
     }}>
       {/* Style badge */}
       <div style={{

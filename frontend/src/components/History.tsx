@@ -600,7 +600,7 @@ export default function History() {
       </div>
 
       {/* Status filter + style filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div className="history-filter-bar" style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div style={{ position: 'relative', minWidth: isMobile ? '100%' : 200, flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
           {statusFilter !== 'all' && (
             <span style={{
@@ -634,11 +634,10 @@ export default function History() {
             <Icon name="chevronDown" size={16} stroke={2} />
           </span>
         </div>
-        <div style={{
-          display: 'flex', gap: 4, padding: 5, borderRadius: 18,
-          background: 'var(--clay-input-bg)', boxShadow: 'var(--shadow-clay-pressed)',
-          flexWrap: 'wrap',
-        }}>
+        <div
+          className="filter-tabs"
+          style={{ background: 'var(--clay-input-bg)', boxShadow: 'var(--shadow-clay-pressed)', width: isMobile ? '100%' : 'auto', overflowX: 'auto' }}
+        >
           {STYLE_FILTERS.map((f) => (
             <button
               key={f.id}
