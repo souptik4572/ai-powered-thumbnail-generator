@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, UploadFile, File, APIRouter
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select
+from sqlmodel import Session, select, col
 
 from database import get_session
 from models.thumbnail import Thumbnail
@@ -102,6 +102,7 @@ def get_all_thumbnails(
     query = select(Thumbnail)
     if status:
         query = query.where(Thumbnail.status == status)
+    query = query.order_by(col(Thumbnail.created_at).desc())
     thumbnails = session.exec(query).all()
     result = []
     for thumbnail in thumbnails:
