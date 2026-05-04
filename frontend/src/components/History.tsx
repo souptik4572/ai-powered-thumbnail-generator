@@ -23,6 +23,23 @@ const STYLE_FILTERS = [
   ...STYLES.map((s) => ({ id: s.id, label: s.label, color: s.color })),
 ];
 
+const STATUS_OPTIONS = [
+  { id: 'all',        label: 'All Statuses' },
+  { id: 'PENDING',    label: 'Pending' },
+  { id: 'PROCESSING', label: 'Processing' },
+  { id: 'GENERATING', label: 'Generating' },
+  { id: 'UPLOADED',   label: 'Uploaded' },
+  { id: 'FAILED',     label: 'Failed' },
+] as const;
+
+const STATUS_COLORS: Record<string, string> = {
+  PENDING:    '#F59E0B',
+  PROCESSING: '#3B82F6',
+  GENERATING: '#8B5CF6',
+  UPLOADED:   '#10B981',
+  FAILED:     '#EF4444',
+};
+
 interface JobGroup {
   jobId: string;
   prompt: string;
@@ -528,7 +545,7 @@ export default function History() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
-  const [q, setQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   // incrementing this value re-triggers the fetch effect (used by Retry)
   const [fetchKey, setFetchKey] = useState(0);
 
@@ -546,11 +563,10 @@ export default function History() {
 
   const fetchHistory = () => { setFetchKey((k) => k + 1); };
 
-  // Match against ALL thumbnails in the group so multi-style jobs are discoverable
   const filtered = groups.filter(
     (g) =>
       (filter === 'all' || g.thumbnails.some((t) => t.style_name === filter)) &&
-      (q === '' || g.prompt.toLowerCase().includes(q.toLowerCase()))
+      (statusFilter === 'all' || g.thumbnails.some((t) => t.status === statusFilter))
   );
 
   const handleNew = () => { startNewJob(); setScreen('generator'); };
@@ -583,21 +599,39 @@ export default function History() {
         </button>
       </div>
 
-      {/* Search + style filters */}
+      {/* Status filter + style filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: isMobile ? 'auto' : 240, width: isMobile ? '100%' : undefined, position: 'relative' }}>
-          <input
+        <div style={{ position: 'relative', minWidth: isMobile ? '100%' : 200, flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
+          {statusFilter !== 'all' && (
+            <span style={{
+              position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+              width: 9, height: 9, borderRadius: 99,
+              background: STATUS_COLORS[statusFilter],
+              pointerEvents: 'none', zIndex: 1, flexShrink: 0,
+            }} />
+          )}
+          <select
             className="clay-input"
-            placeholder="Search prompts…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            style={{ paddingLeft: 46 }}
-          />
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{
+              paddingLeft: statusFilter !== 'all' ? 34 : 16,
+              paddingRight: 36,
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.id} value={opt.id}>{opt.label}</option>
+            ))}
+          </select>
           <span style={{
-            position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+            position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
             color: 'var(--clay-muted)', pointerEvents: 'none',
           }}>
-            <Icon name="search" size={18} />
+            <Icon name="chevronDown" size={16} stroke={2} />
           </span>
         </div>
         <div style={{
