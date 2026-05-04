@@ -91,6 +91,32 @@ export interface BackendThumbnail {
   created_at: string | null;
 }
 
+export interface BackendJob {
+  id: string;
+  prompt: string;
+  num_thumbnails: number;
+  headshot_url: string | null;
+  status: string;
+  thumbnails: BackendThumbnail[];
+  created_at: string | null;
+}
+
+export async function getJobs(token: string): Promise<BackendJob[]> {
+  const res = await fetch(`${API_BASE}/jobs`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch jobs: ${res.statusText}`);
+  return res.json();
+}
+
+export async function getThumbnail(id: string, token: string): Promise<BackendThumbnail> {
+  const res = await fetch(`${API_BASE}/thumbnails/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch thumbnail: ${res.statusText}`);
+  return res.json();
+}
+
 export async function getCredits(token: string): Promise<{ credits: number }> {
   const res = await fetch(`${API_BASE}/users/credits`, {
     headers: { Authorization: `Bearer ${token}` },

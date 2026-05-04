@@ -8,6 +8,8 @@ import Generator from './components/Generator';
 import Loading from './components/Loading';
 import Results from './components/Results';
 import History from './components/History';
+import JobDetail from './components/JobDetail';
+import ThumbnailDetail from './components/ThumbnailDetail';
 import ToastContainer from './components/ToastContainer';
 import Icon from './components/Icon';
 
@@ -47,10 +49,12 @@ export default function App() {
 
           {/* key forces re-mount → screen-enter animation plays on every navigation */}
           <main key={screen} className="page-main" style={{ flex: 1 }}>
-            {screen === 'generator' && <Generator />}
-            {screen === 'loading'   && <Loading />}
-            {screen === 'results'   && <Results />}
-            {screen === 'history'   && <History />}
+            {screen === 'generator'        && <Generator />}
+            {screen === 'loading'          && <Loading />}
+            {screen === 'results'          && <Results />}
+            {screen === 'history'          && <History />}
+            {screen === 'job-detail'       && <JobDetail />}
+            {screen === 'thumbnail-detail' && <ThumbnailDetail />}
           </main>
 
           <AppFooter />

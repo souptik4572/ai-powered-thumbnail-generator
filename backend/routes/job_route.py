@@ -1,6 +1,7 @@
 import json
 import logging
 import asyncio
+from collections import defaultdict
 from typing import Optional
 
 from fastapi import Depends, HTTPException, UploadFile, File, APIRouter
@@ -61,6 +62,52 @@ async def create_job(request: CreateJobRequest, session: Session = Depends(get_s
     asyncio.create_task(process_job(job.id))
 
     return CreateJobResponse(job_id=job.id)  # type: ignore
+
+
+@router.get("/jobs", response_model=list[JobResponse])
+def get_all_jobs(session: Session = Depends(get_session), user_id: str = Depends(get_current_user)):
+    jobs = session.exec(
+        select(Job).where(Job.user_id == user_id).order_by(col(Job.created_at).desc())
+    ).all()
+
+    if not jobs:
+        return []
+
+    # Single query for all thumbnails — eliminates N+1
+    job_ids = [job.id for job in jobs]
+    all_thumbnails = session.exec(
+        select(Thumbnail).where(col(Thumbnail.job_id).in_(job_ids))
+    ).all()
+
+    thumbnails_by_job: dict[str, list] = defaultdict(list)
+    for thumbnail in all_thumbnails:
+        thumbnails_by_job[thumbnail.job_id].append(thumbnail)
+
+    job_responses = []
+    for job in jobs:
+        thumbnail_response = [
+            ThumbnailResponse(
+                id=thumbnail.id,  # type: ignore
+                style_name=thumbnail.style_name,
+                status=thumbnail.status,  # type: ignore
+                imagekit_url=thumbnail.imagekit_url,
+                error_message=thumbnail.error_message,
+                variants=get_variants(thumbnail.imagekit_url) if thumbnail.imagekit_url else None,
+            )
+            for thumbnail in thumbnails_by_job.get(job.id, [])
+        ]
+        job_responses.append(
+            JobResponse(
+                id=job.id,  # type: ignore
+                prompt=job.prompt,
+                num_thumbnails=job.num_thumbnails,
+                headshot_url=job.headshot_url,
+                status=job.status,  # type: ignore
+                thumbnails=thumbnail_response,
+                created_at=job.created_at,
+            )
+        )
+    return job_responses
 
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)

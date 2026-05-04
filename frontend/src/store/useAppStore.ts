@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { BackendJob, BackendThumbnail } from '../api';
 
-export type Screen = 'auth' | 'generator' | 'loading' | 'results' | 'history';
+export type Screen = 'auth' | 'generator' | 'loading' | 'results' | 'history' | 'job-detail' | 'thumbnail-detail';
 export type Theme = 'light' | 'dark';
 export type Accent = 'violet' | 'blue' | 'pink' | 'green' | 'amber';
 
@@ -48,6 +49,8 @@ interface AppState {
   liveThumbnails: LiveThumbnail[];
   credits: number | null;
   jobError: string | null;
+  selectedJob: BackendJob | null;
+  selectedThumbnail: BackendThumbnail | null;
 
   // Actions
   login: (user: User, token: string) => void;
@@ -69,6 +72,8 @@ interface AppState {
   setJobError: (error: string | null) => void;
   saveJobToHistory: (entry: HistoryEntry) => void;
   startNewJob: () => void;
+  viewJob: (job: BackendJob) => void;
+  viewThumbnail: (thumbnail: BackendThumbnail) => void;
 }
 
 const useAppStore = create<AppState>()(
@@ -91,6 +96,8 @@ const useAppStore = create<AppState>()(
       liveThumbnails: [],
       credits: null,
       jobError: null,
+      selectedJob: null,
+      selectedThumbnail: null,
 
       login: (user, token) => set({ user, token, screen: 'generator' }),
       logout: () => set({ user: null, token: null, screen: 'auth', credits: null }),
@@ -117,6 +124,8 @@ const useAppStore = create<AppState>()(
         set((s) => ({ history: [entry, ...s.history.slice(0, 49)] })),
       startNewJob: () =>
         set({ jobId: null, liveThumbnails: [], jobError: null, headshotPreview: null, headshotUrl: null, prompt: '', styleSel: 'clean_minimal', aspect: 'yt', count: 3 }),
+      viewJob: (job) => set({ selectedJob: job, screen: 'job-detail' }),
+      viewThumbnail: (thumbnail) => set({ selectedThumbnail: thumbnail, screen: 'thumbnail-detail' }),
     }),
     {
       name: 'hookframe-storage',

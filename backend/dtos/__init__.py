@@ -31,9 +31,10 @@ class JobResponse(BaseModel):
     id: str
     prompt: str
     num_thumbnails: int
-    headshot_url: str
+    headshot_url: str | None = None
     status: Status
     thumbnails: list[ThumbnailResponse]
+    created_at: datetime | None = None
 
 class RegisterUserRequest(BaseModel):
     email: str

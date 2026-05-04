@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { MouseEvent } from 'react';
 import useAppStore from '../store/useAppStore';
-import { getThumbnails } from '../api';
-import type { BackendThumbnail } from '../api';
+import { getJobs } from '../api';
+import type { BackendJob, BackendThumbnail } from '../api';
 import Icon from './Icon';
 import { useBreakpoint } from '../hooks/useBreakpoint';
-import { useToastStore } from '../hooks/useToast';
+import ThumbnailDownloadOverlay from './ThumbnailDownloadOverlay';
 
 // Single source of truth for styles — must match backend style_name values
 const STYLES: { id: string; label: string; color: string }[] = [
@@ -40,32 +39,6 @@ const STATUS_COLORS: Record<string, string> = {
   FAILED:     '#EF4444',
 };
 
-interface JobGroup {
-  jobId: string;
-  prompt: string;
-  style: string;
-  createdAt: string;
-  thumbnails: BackendThumbnail[];
-}
-
-function groupByJob(thumbnails: BackendThumbnail[]): JobGroup[] {
-  const map = new Map<string, JobGroup>();
-  for (const t of thumbnails) {
-    const key = t.job_id ?? t.id;
-    if (!map.has(key)) {
-      map.set(key, {
-        jobId: key,
-        prompt: t.prompt ?? '',
-        style: t.style_name,
-        createdAt: t.created_at ?? new Date().toISOString(),
-        thumbnails: [],
-      });
-    }
-    map.get(key)!.thumbnails.push(t);
-  }
-  return Array.from(map.values());
-}
-
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
@@ -78,163 +51,6 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-async function downloadImage(url: string, filename: string): Promise<'downloaded' | 'opened'> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('fetch failed');
-    const blob = await res.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(objectUrl);
-    return 'downloaded';
-  } catch {
-    window.open(url, '_blank');
-    return 'opened';
-  }
-}
-
-// ─── Variant download buttons shown in the hover overlay ─────────────────────
-
-const VARIANTS = [
-  { key: 'youtube', label: 'YouTube', dim: '1280×720',  icon: 'tv' },
-  { key: 'shorts',  label: 'Shorts',  dim: '1080×1920', icon: 'smartphone' },
-  { key: 'square',  label: 'Square',  dim: '1080×1080', icon: 'square' },
-] as const;
-
-function VariantButton({
-  variantKey,
-  label,
-  dim,
-  icon,
-  url,
-  styleName,
-  compact,
-  hovered,
-  index,
-}: {
-  variantKey: string;
-  label: string;
-  dim: string;
-  icon: string;
-  url: string;
-  styleName: string;
-  compact: boolean;
-  hovered: boolean;
-  index: number;
-}) {
-  const [busy, setBusy] = useState(false);
-
-  const handleDownload = async (e: MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (busy) return;
-    setBusy(true);
-    const result = await downloadImage(url, `hookframe-${styleName}-${variantKey}.jpg`);
-    setBusy(false);
-    if (result === 'downloaded') {
-      useToastStore.getState().push(`${label} (${dim}) saved!`, 'success');
-    } else {
-      useToastStore.getState().push('Opening in new tab — direct download unavailable.', 'info');
-    }
-  };
-
-  const pillBase: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    borderRadius: 99,
-    overflow: 'hidden',
-    background: 'rgba(255,255,255,0.14)',
-    backdropFilter: 'blur(6px)',
-    WebkitBackdropFilter: 'blur(6px)',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.25), inset 0 1px 1px rgba(255,255,255,0.2)',
-    color: '#fff',
-    fontFamily: 'Nunito, sans-serif',
-    fontWeight: 800,
-    whiteSpace: 'nowrap',
-    // staggered spring entrance
-    transform: hovered
-      ? 'scale(1) translateY(0)'
-      : `scale(0.82) translateY(${8 + index * 4}px)`,
-    opacity: hovered ? 1 : 0,
-    transition: `transform 240ms cubic-bezier(0.34,1.56,0.64,1) ${index * 55}ms,
-                 opacity 180ms ease ${index * 55}ms`,
-  };
-
-  const btnStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: compact ? 0 : 7,
-    justifyContent: compact ? 'center' : 'flex-start',
-    height: compact ? 32 : 34,
-    padding: compact ? '0 10px' : '0 12px',
-    border: 0,
-    background: 'transparent',
-    cursor: busy ? 'wait' : 'pointer',
-    color: '#fff',
-    fontSize: compact ? 10 : 11,
-    fontFamily: 'inherit',
-    fontWeight: 800,
-    letterSpacing: '0.04em',
-  };
-
-  return (
-    <div style={pillBase}>
-      {/* Left: download action */}
-      <button onClick={handleDownload} title={`Download ${label} (${dim})`} style={btnStyle}>
-        {busy
-          ? <div style={{
-              width: 12, height: 12, flexShrink: 0,
-              border: '2px solid rgba(255,255,255,0.35)',
-              borderTopColor: '#fff', borderRadius: 99,
-              animation: 'spin-slow 0.7s linear infinite',
-            }} />
-          : <Icon name={icon} size={compact ? 12 : 13} stroke={2.2} />
-        }
-        {!compact && <span>{label}</span>}
-        {!compact && (
-          <span style={{ opacity: 0.6, fontSize: 9, marginLeft: 2 }}>{dim}</span>
-        )}
-      </button>
-
-      {/* Divider */}
-      <div style={{
-        width: 1, alignSelf: 'stretch',
-        background: 'rgba(255,255,255,0.2)',
-        margin: '7px 0',
-        flexShrink: 0,
-      }} />
-
-      {/* Right: open in new tab */}
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        title={`Open ${label} in new tab`}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          display: 'grid',
-          placeItems: 'center',
-          height: compact ? 32 : 34,
-          padding: compact ? '0 8px' : '0 10px',
-          color: 'rgba(255,255,255,0.65)',
-          textDecoration: 'none',
-          transition: 'color 150ms',
-          flexShrink: 0,
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-        onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.65)')}
-      >
-        <Icon name="externalLink" size={compact ? 11 : 12} stroke={2} />
-      </a>
-    </div>
-  );
-}
-
 // ─── Per-thumbnail card with hover download overlay ──────────────────────────
 
 function ThumbnailItem({
@@ -245,14 +61,7 @@ function ThumbnailItem({
   isLarge?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
-
   const label = STYLE_LABELS[thumb.style_name] ?? thumb.style_name;
-
-  // Build variant URLs — fall back to base URL if variants not available
-  const variantUrls = VARIANTS.map((v) => ({
-    ...v,
-    url: thumb.variants?.[v.key] ?? thumb.imagekit_url ?? '',
-  }));
 
   return (
     <div
@@ -279,7 +88,6 @@ function ThumbnailItem({
         </div>
       )}
 
-      {/* Style badge — fades out on hover */}
       <div style={{
         position: 'absolute', bottom: 7, left: 7,
         background: 'rgba(20,15,40,0.62)',
@@ -294,48 +102,12 @@ function ThumbnailItem({
         {label}
       </div>
 
-      {/* Download overlay — 3 variant buttons */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: 'rgba(14,10,30,0.7)',
-        backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: isLarge ? 7 : 5,
-        padding: isLarge ? 16 : 8,
-        opacity: hovered ? 1 : 0,
-        transition: 'opacity 180ms ease',
-        borderRadius: isLarge ? 14 : 10,
-      }}>
-        {/* "Download as" label — large only */}
-        {isLarge && (
-          <div style={{
-            fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.5)',
-            letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2,
-            opacity: hovered ? 1 : 0,
-            transition: 'opacity 180ms ease 60ms',
-          }}>
-            Download as
-          </div>
-        )}
-
-        {variantUrls.map((v, i) => (
-          <VariantButton
-            key={v.key}
-            variantKey={v.key}
-            label={v.label}
-            dim={v.dim}
-            icon={v.icon}
-            url={v.url}
-            styleName={thumb.style_name}
-            compact={!isLarge}
-            hovered={hovered}
-            index={i}
-          />
-        ))}
-      </div>
+      <ThumbnailDownloadOverlay
+        thumbnail={thumb}
+        hovered={hovered}
+        compact={!isLarge}
+        borderRadius={isLarge ? 14 : 10}
+      />
     </div>
   );
 }
@@ -370,7 +142,6 @@ function ThumbnailBento({ thumbnails }: { thumbnails: BackendThumbnail[] }) {
     );
   }
 
-  // 3 thumbnails — bento: first item is tall on the left, two smaller on the right
   if (n === 3) {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gridTemplateRows: '1fr 1fr', gap: 6, height: 190 }}>
@@ -383,7 +154,6 @@ function ThumbnailBento({ thumbnails }: { thumbnails: BackendThumbnail[] }) {
     );
   }
 
-  // 4 thumbnails — 2×2 grid
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 6, height: 190 }}>
       {thumbnails.slice(0, 4).map((t) => (
@@ -395,27 +165,21 @@ function ThumbnailBento({ thumbnails }: { thumbnails: BackendThumbnail[] }) {
 
 // ─── History card ─────────────────────────────────────────────────────────────
 
-function HistoryCard({ group }: { group: JobGroup }) {
-  const thumbs = group.thumbnails;
+function HistoryCard({ job, onView }: { job: BackendJob; onView: () => void }) {
+  const thumbs = job.thumbnails;
 
   return (
     <div
       className="clay-card is-hoverable surface-2"
-      style={{ padding: 14, borderRadius: 28, cursor: 'default' }}
+      style={{ padding: 14, borderRadius: 28, cursor: 'default', display: 'flex', flexDirection: 'column' }}
     >
-      {/* Thumbnail bento — recessed surface */}
       <div style={{
-        borderRadius: 20,
-        overflow: 'hidden',
-        marginBottom: 14,
-        padding: 8,
-        background: 'var(--clay-input-bg)',
-        boxShadow: 'var(--shadow-clay-pressed)',
+        borderRadius: 20, overflow: 'hidden', marginBottom: 14, padding: 8,
+        background: 'var(--clay-input-bg)', boxShadow: 'var(--shadow-clay-pressed)',
       }}>
         <ThumbnailBento thumbnails={thumbs} />
       </div>
 
-      {/* Timestamp + variation count row */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         marginBottom: thumbs.length > 0 ? 8 : 0,
@@ -428,29 +192,28 @@ function HistoryCard({ group }: { group: JobGroup }) {
           {thumbs.length} variation{thumbs.length !== 1 ? 's' : ''}
         </div>
         <span style={{ fontSize: 11, color: 'var(--clay-muted)', fontWeight: 700 }}>
-          {timeAgo(group.createdAt)}
+          {timeAgo(job.created_at ?? new Date().toISOString())}
         </span>
       </div>
 
-      {/* Prompt */}
-      {group.prompt && (
+      {job.prompt && (
         <div style={{
-          fontSize: 13,
-          color: 'var(--clay-fg)',
-          lineHeight: 1.5,
-          fontWeight: 500,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
+          fontSize: 13, color: 'var(--clay-fg)', lineHeight: 1.5, fontWeight: 500,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          overflow: 'hidden', marginBottom: 14,
         }}>
-          {group.prompt}
+          {job.prompt}
         </div>
       )}
 
-      <style>{`
-        @keyframes spin-slow { to { transform: rotate(360deg); } }
-      `}</style>
+      <button
+        onClick={onView}
+        className="clay-btn clay-btn-primary"
+        style={{ height: 40, fontSize: 13, marginTop: 'auto', gap: 6, borderRadius: 16 }}
+      >
+        View details
+        <Icon name="arrow" size={14} stroke={2.2} />
+      </button>
     </div>
   );
 }
@@ -464,8 +227,7 @@ function LoadingState() {
         <div key={i} className="clay-card surface-2" style={{ padding: 14, borderRadius: 28 }}>
           <div style={{
             borderRadius: 20, marginBottom: 14, height: 206,
-            background: 'var(--clay-input-bg)',
-            boxShadow: 'var(--shadow-clay-pressed)',
+            background: 'var(--clay-input-bg)', boxShadow: 'var(--shadow-clay-pressed)',
             animation: 'clay-breathe 1.8s ease-in-out infinite',
             animationDelay: `${delay}s`,
           }} />
@@ -539,39 +301,45 @@ function EmptyHistory({ onNew }: { onNew: () => void }) {
 // ─── Main History screen ──────────────────────────────────────────────────────
 
 export default function History() {
-  const { token, setScreen, startNewJob } = useAppStore();
+  const { token, setScreen, startNewJob, viewJob } = useAppStore();
   const { isMobile } = useBreakpoint();
-  const [groups, setGroups] = useState<JobGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [jobs, setJobs] = useState<BackendJob[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  // incrementing this value re-triggers the fetch effect (used by Retry)
+  // fetchKey increments on retry; completedKey tracks the last finished fetch.
+  // loading is derived — no synchronous setState inside effects.
   const [fetchKey, setFetchKey] = useState(0);
+  const [completedKey, setCompletedKey] = useState<number | null>(null);
+  const loading = !!token && completedKey !== fetchKey;
 
   useEffect(() => {
-    if (!token) { setLoading(false); return; }
+    if (!token) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    getThumbnails(token)
-      .then((thumbnails) => { if (!cancelled) setGroups(groupByJob(thumbnails)); })
-      .catch((err: unknown) => { if (!cancelled) setError((err as Error).message ?? 'Failed to load history'); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+    getJobs(token)
+      .then((data) => {
+        if (!cancelled) { setJobs(data); setError(null); setCompletedKey(fetchKey); }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError((err as Error).message ?? 'Failed to load history');
+          setCompletedKey(fetchKey);
+        }
+      });
     return () => { cancelled = true; };
-  }, [token, fetchKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token, fetchKey]);
 
-  const fetchHistory = () => { setFetchKey((k) => k + 1); };
+  const fetchHistory = () => { setError(null); setFetchKey((k) => k + 1); };
 
-  const filtered = groups.filter(
-    (g) =>
-      (filter === 'all' || g.thumbnails.some((t) => t.style_name === filter)) &&
-      (statusFilter === 'all' || g.thumbnails.some((t) => t.status === statusFilter))
+  const filtered = jobs.filter(
+    (job) =>
+      (filter === 'all' || job.thumbnails.some((t) => t.style_name === filter)) &&
+      (statusFilter === 'all' || job.thumbnails.some((t) => t.status === statusFilter))
   );
 
   const handleNew = () => { startNewJob(); setScreen('generator'); };
 
-  const totalThumbnails = groups.reduce((acc, g) => acc + g.thumbnails.length, 0);
+  const totalThumbnails = jobs.reduce((acc, job) => acc + job.thumbnails.length, 0);
 
   return (
     <div className="clay-card screen-enter" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40 }}>
@@ -590,7 +358,7 @@ export default function History() {
           <p style={{ color: 'var(--clay-muted)', fontSize: 15, margin: '6px 0 0' }}>
             {loading
               ? 'Loading…'
-              : `${groups.length} job${groups.length !== 1 ? 's' : ''} · ${totalThumbnails} thumbnail${totalThumbnails !== 1 ? 's' : ''} total`
+              : `${jobs.length} job${jobs.length !== 1 ? 's' : ''} · ${totalThumbnails} thumbnail${totalThumbnails !== 1 ? 's' : ''} total`
             }
           </p>
         </div>
@@ -665,7 +433,7 @@ export default function History() {
         <LoadingState />
       ) : error ? (
         <ErrorState message={error} onRetry={fetchHistory} />
-      ) : groups.length === 0 ? (
+      ) : jobs.length === 0 ? (
         <EmptyHistory onNew={handleNew} />
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--clay-muted)' }}>
@@ -675,7 +443,9 @@ export default function History() {
         </div>
       ) : (
         <div className="history-grid">
-          {filtered.map((group) => <HistoryCard key={group.jobId} group={group} />)}
+          {filtered.map((job) => (
+            <HistoryCard key={job.id} job={job} onView={() => viewJob(job)} />
+          ))}
         </div>
       )}
     </div>

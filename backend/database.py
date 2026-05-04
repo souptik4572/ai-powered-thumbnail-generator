@@ -10,7 +10,7 @@ from config import DATABASE_URL
 # check_same_thread is only a valid kwarg for SQLite
 _extra: dict = {"connect_args": {"check_same_thread": False}} if DATABASE_URL.startswith("sqlite") else {}
 
-engine = create_engine(DATABASE_URL, echo=True, **_extra)
+engine = create_engine(DATABASE_URL, echo=False, **_extra)
 
 _ALEMBIC_CFG_PATH = os.path.join(os.path.dirname(__file__), "alembic.ini")
 
