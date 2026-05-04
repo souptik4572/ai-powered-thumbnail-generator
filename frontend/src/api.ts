@@ -42,7 +42,10 @@ export async function uploadHeadshot(file: File): Promise<string> {
   const form = new FormData();
   form.append('file', file);
   const res = await fetch(`${API_BASE}/upload-headshot`, { method: 'POST', body: form });
-  if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? `Upload failed: ${res.statusText}`);
+  }
   const data = await res.json();
   return data.url as string;
 }
@@ -63,7 +66,10 @@ export async function createJob(
       headshot_url: payload.headshotUrl,
     }),
   });
-  if (!res.ok) throw new Error(`Create job failed: ${res.statusText}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? `Failed to start generation: ${res.statusText}`);
+  }
   return res.json();
 }
 

@@ -47,6 +47,7 @@ interface AppState {
   jobId: string | null;
   liveThumbnails: LiveThumbnail[];
   credits: number | null;
+  jobError: string | null;
 
   // Actions
   login: (user: User, token: string) => void;
@@ -65,6 +66,7 @@ interface AppState {
   setJobId: (id: string | null) => void;
   addLiveThumbnail: (t: LiveThumbnail) => void;
   clearLiveThumbnails: () => void;
+  setJobError: (error: string | null) => void;
   saveJobToHistory: (entry: HistoryEntry) => void;
   startNewJob: () => void;
 }
@@ -88,6 +90,7 @@ const useAppStore = create<AppState>()(
       jobId: null,
       liveThumbnails: [],
       credits: null,
+      jobError: null,
 
       login: (user, token) => set({ user, token, screen: 'generator' }),
       logout: () => set({ user: null, token: null, screen: 'auth', credits: null }),
@@ -109,10 +112,11 @@ const useAppStore = create<AppState>()(
           : [...s.liveThumbnails, t],
       })),
       clearLiveThumbnails: () => set({ liveThumbnails: [] }),
+      setJobError: (jobError) => set({ jobError }),
       saveJobToHistory: (entry) =>
         set((s) => ({ history: [entry, ...s.history.slice(0, 49)] })),
       startNewJob: () =>
-        set({ jobId: null, liveThumbnails: [], headshotPreview: null, headshotUrl: null, prompt: '', styleSel: 'clean_minimal', aspect: 'yt', count: 3 }),
+        set({ jobId: null, liveThumbnails: [], jobError: null, headshotPreview: null, headshotUrl: null, prompt: '', styleSel: 'clean_minimal', aspect: 'yt', count: 3 }),
     }),
     {
       name: 'hookframe-storage',

@@ -22,7 +22,7 @@ export default function Loading() {
     jobId, count, prompt, styleSel,
     aspect,
     liveThumbnails, addLiveThumbnail, clearLiveThumbnails,
-    setScreen, saveJobToHistory,
+    setScreen, saveJobToHistory, setJobError,
   } = useAppStore();
 
   const { isMobile } = useBreakpoint();
@@ -62,10 +62,15 @@ export default function Loading() {
         });
       },
       onThumbnailFailed: () => {
-        // Continue — fewer thumbnails is acceptable
+        // Individual failures are acceptable; handled at job completion
       },
       onJobCompleted: () => {
         const ready = useAppStore.getState().liveThumbnails;
+        if (ready.length === 0) {
+          setJobError('None of the thumbnails could be generated. Please try again.');
+          setScreen('results');
+          return;
+        }
         saveJobToHistory({
           jobId: jobId!,
           prompt,
@@ -81,8 +86,14 @@ export default function Loading() {
         );
         setScreen('results');
       },
-      onError: () => {
-        useToastStore.getState().push('Generation encountered an issue. Showing available results.', 'warning');
+      onError: (data) => {
+        const ready = useAppStore.getState().liveThumbnails;
+        if (ready.length === 0) {
+          const msg = (data as { message?: string })?.message;
+          setJobError(msg ?? 'Something went wrong during generation. Please try again.');
+        } else {
+          useToastStore.getState().push('Generation encountered an issue. Showing available results.', 'warning');
+        }
         setScreen('results');
       },
     });
@@ -92,6 +103,10 @@ export default function Loading() {
     // Safety timeout: if no completion after 3 min, go to results anyway
     const timeout = setTimeout(() => {
       es.close();
+      const ready = useAppStore.getState().liveThumbnails;
+      if (ready.length === 0) {
+        setJobError('Generation timed out. Please try again.');
+      }
       setScreen('results');
     }, 180_000);
 

@@ -40,6 +40,7 @@ async function downloadUrl(url: string, filename: string): Promise<'downloaded' 
 export default function Results() {
   const {
     liveThumbnails, count, prompt, styleSel, aspect,
+    jobError, setJobError,
     setScreen, clearLiveThumbnails, startNewJob,
   } = useAppStore();
 
@@ -58,9 +59,46 @@ export default function Results() {
   };
 
   const handleRegen = () => {
+    setJobError(null);
     clearLiveThumbnails();
     setScreen('loading');
   };
+
+  const handleTryAgain = () => {
+    setJobError(null);
+    clearLiveThumbnails();
+    setScreen('generator');
+  };
+
+  if (jobError && thumbs.length === 0) {
+    return (
+      <div className="screen-enter" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: isMobile ? '24px 0' : '40px 0' }}>
+        <div className="clay-card" style={{ padding: isMobile ? 28 : 48, borderRadius: isMobile ? 28 : 40, maxWidth: 520, width: '100%', textAlign: 'center' }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 20, margin: '0 auto 20px',
+            background: 'rgba(239,68,68,0.1)', color: '#EF4444',
+            display: 'grid', placeItems: 'center',
+          }}>
+            <Icon name="x" size={28} stroke={2.5} />
+          </div>
+          <h2 className="font-display" style={{ margin: '0 0 10px', fontSize: isMobile ? 24 : 30, fontWeight: 900 }}>
+            Generation failed
+          </h2>
+          <p style={{ color: 'var(--clay-muted)', fontSize: 15, margin: '0 auto 32px', lineHeight: 1.6, maxWidth: 380 }}>
+            {jobError}
+          </p>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, justifyContent: 'center' }}>
+            <button onClick={handleTryAgain} className="clay-btn clay-btn-primary" style={{ height: 56, fontSize: 15, flex: isMobile ? undefined : '0 0 auto', padding: '0 32px' }}>
+              <Icon name="refresh" size={18} stroke={2.2} /> Try again
+            </button>
+            <button onClick={handleNew} className="clay-btn clay-btn-secondary" style={{ height: 56, fontSize: 15, flex: isMobile ? undefined : '0 0 auto', padding: '0 24px' }}>
+              <Icon name="plus" size={18} /> Start fresh
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="screen-enter results-layout">
