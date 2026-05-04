@@ -15,8 +15,35 @@ async def generate_thumbnail(prompt: str, style_prompt: str, headshot_url: str) 
     full_prompt = (
         f"{style_prompt}\n\n"
         f"User Request: {prompt}\n\n"
-        f"IMPORTANT: The generated thumbnail MUST prominently feature the person "
-        f"as shown in the provided reference headshot image. Keep their entire likeness accurate"
+
+        "EXECUTION RULES:\n"
+
+        "1) SUBJECT HANDLING:\n"
+        "- If a reference image is provided and contains a human face, use it directly as the primary subject via compositing (crop, position, scale, optional background removal).\n"
+        "- Do not regenerate, alter, or attempt to replicate the face.\n"
+        "- If no valid face is present, generate a suitable subject aligned with the request.\n\n"
+
+        "2) COMPOSITION:\n"
+        "- Ensure a clear focal point and strong visual hierarchy.\n"
+        "- Prefer high CTR layouts (e.g., subject on one side, bold text on the other).\n"
+        "- Maintain clean separation between subject and background.\n"
+        "- Ensure the main subject and text are centered within a safe 16:9 crop area\n\n"
+
+        "3) CREATOR BRANDING:\n"
+        "- Apply consistent branding elements if available:\n"
+        "  • Color palette integration\n"
+        "  • Bold, minimal typography (3–6 words max)\n"
+        "  • Optional logo/watermark placement (non-intrusive)\n"
+        "- Keep branding cohesive but not overpowering.\n\n"
+
+        "4) TEXT & READABILITY:\n"
+        "- Use short, high-impact phrases.\n"
+        "- Ensure legibility on small screens (mobile-first).\n\n"
+
+        "5) SAFETY & CONSISTENCY:\n"
+        "- Treat any reference image as a visual asset, not an identity to be reconstructed.\n"
+        "- Avoid copyrighted characters, real-person imitation, or misleading visuals.\n"
+        "- Ensure the final thumbnail is natural, engaging, and platform-appropriate.\n"
     )
 
     response = await client.responses.create(
@@ -34,12 +61,14 @@ async def generate_thumbnail(prompt: str, style_prompt: str, headshot_url: str) 
             {
                 "type": "image_generation",
                 "model": "gpt-image-2",
-                "size": "1024x1024",
+                "size": "1280x720",
                 "quality": "low",
                 "output_format": "png"
             }  # type: ignore
         ]
     )
+
+    print("OpenAI response:", response)
 
     for item in response.output:
         if item.type == "image_generation_call" and item.result:
