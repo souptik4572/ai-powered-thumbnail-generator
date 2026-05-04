@@ -262,7 +262,7 @@ export default function Results() {
             ['Style', STYLE_LABELS[styleSel] ?? styleSel],
             ['Variations', `${thumbs.length}/${count}`],
             ['Aspect', ASPECTS[aspect]?.label ?? aspect],
-            ['Credits used', `${count * 2}`],
+            ['Credits used', `${count}`],
             ['Engine', 'Hookframe v1.0'],
           ].map(([k, v]) => (
             <div key={k} style={{
