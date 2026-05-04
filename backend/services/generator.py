@@ -12,18 +12,27 @@ logger = logging.getLogger(__name__)
 
 STYLES = {
     "bold_dramatic": (
-        "Create a bold Youtube thumbnail with high contrast, cinematic lighting, dark moody background and powerful composition. "
-        "The person's face should be prominent with a dramatic expression."
+        "Create a high-contrast cinematic YouTube thumbnail with a dark, moody background and dramatic lighting. "
+        "Use strong shadows, rim lighting, and depth to emphasize the main subject. "
+        "Ensure a clear focal point and an intense, attention-grabbing mood. "
+        "Design the layout for a 16:9 thumbnail with the subject prominently placed and space reserved for bold text. "
+        "Keep important elements within a centered safe area to avoid cropping."
     ),
+
     "clean_minimal": (
-        "Create a clean and minimal Youtube thumbnail with bright lighting, white / light background, mordern professional aesthetic, "
-        "plenty of whitespace, and sharp clean composition. "
-        "The person should look approachable and professional."
+        "Create a clean and minimal YouTube thumbnail with bright, even lighting and a light or white background. "
+        "Use a modern, professional aesthetic with balanced spacing and strong visual hierarchy. "
+        "Maintain simplicity with a clear focal subject and minimal distractions. "
+        "Design for a 16:9 layout with structured composition and clear space for short, readable text. "
+        "Ensure all key elements remain within a safe central area."
     ),
+
     "vibrant_energetic": (
-        "Create a vibrant and energetic Youtube thumbnail with colorful gradients, "
-        "dynamic angles, eye-catching pop art style colors and energetic compostion. "
-        "The person should have an exciting and engaging expression."
+        "Create a vibrant and energetic YouTube thumbnail using bold colors, gradients, and dynamic composition. "
+        "Incorporate high contrast, motion-inspired angles, and eye-catching visual elements. "
+        "Ensure the thumbnail feels lively, engaging, and optimized for high click-through rate. "
+        "Design the layout for 16:9 with a strong focal subject and space for bold, short text. "
+        "Keep critical elements within a centered safe crop region."
     )
 }
 
@@ -56,7 +65,7 @@ async def generate_single_thumbnail(thumbnail_id: str, prompt: str, headshot_url
                 logger.error("thumbnail_generation_missing_thumbnail_after_openai", extra={"thumbnail_id": thumbnail_id})
                 return
             job_id = thumbnail.job_id  # type: ignore
-        # Uploade the generated image to ImageKit
+        # Upload the generated image to ImageKit
         image_url = upload_file(
             file_bytes=image_bytes,
             file_name=f"{thumbnail_id}.png",
