@@ -7,18 +7,20 @@ import Icon from './Icon';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useToastStore } from '../hooks/useToast';
 
-const STYLE_LABELS: Record<string, string> = {
-  bold: 'Bold', minimal: 'Minimal', tutorial: 'Tutorial', vlog: 'Vlog', react: 'Reaction',
-  clean_minimal: 'Clean', cinematic: 'Cinematic', vibrant: 'Vibrant',
-};
+// Single source of truth for styles — must match backend style_name values
+const STYLES: { id: string; label: string; color: string }[] = [
+  { id: 'bold_dramatic',    label: 'Bold Dramatic',    color: '#7C3AED' },
+  { id: 'clean_minimal',    label: 'Clean Minimal',    color: '#0EA5E9' },
+  { id: 'vibrant_energetic', label: 'Vibrant Energetic', color: '#F97316' },
+];
+
+const STYLE_LABELS: Record<string, string> = Object.fromEntries(
+  STYLES.map((s) => [s.id, s.label])
+);
 
 const STYLE_FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'bold', label: 'Bold' },
-  { id: 'minimal', label: 'Minimal' },
-  { id: 'tutorial', label: 'Tutorial' },
-  { id: 'vlog', label: 'Vlog' },
-  { id: 'react', label: 'Reaction' },
+  { id: 'all', label: 'All', color: null },
+  ...STYLES.map((s) => ({ id: s.id, label: s.label, color: s.color })),
 ];
 
 interface JobGroup {
@@ -527,22 +529,27 @@ export default function History() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
+  // incrementing this value re-triggers the fetch effect (used by Retry)
+  const [fetchKey, setFetchKey] = useState(0);
 
-  const fetchHistory = () => {
-    if (!token) return;
+  useEffect(() => {
+    if (!token) { setLoading(false); return; }
+    let cancelled = false;
     setLoading(true);
     setError(null);
     getThumbnails(token)
-      .then((thumbnails) => setGroups(groupByJob(thumbnails)))
-      .catch((err: unknown) => setError((err as Error).message ?? 'Failed to load history'))
-      .finally(() => setLoading(false));
-  };
+      .then((thumbnails) => { if (!cancelled) setGroups(groupByJob(thumbnails)); })
+      .catch((err: unknown) => { if (!cancelled) setError((err as Error).message ?? 'Failed to load history'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [token, fetchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { fetchHistory(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fetchHistory = () => { setFetchKey((k) => k + 1); };
 
+  // Match against ALL thumbnails in the group so multi-style jobs are discoverable
   const filtered = groups.filter(
     (g) =>
-      (filter === 'all' || g.style === filter) &&
+      (filter === 'all' || g.thumbnails.some((t) => t.style_name === filter)) &&
       (q === '' || g.prompt.toLowerCase().includes(q.toLowerCase()))
   );
 
@@ -605,6 +612,15 @@ export default function History() {
               className={`clay-tab${filter === f.id ? ' is-active' : ''}`}
               style={{ height: 40 }}
             >
+              {f.color && (
+                <span style={{
+                  width: 8, height: 8, borderRadius: 99,
+                  background: f.color, flexShrink: 0,
+                  display: 'inline-block',
+                  opacity: filter === f.id ? 1 : 0.55,
+                  transition: 'opacity 150ms',
+                }} />
+              )}
               {f.label}
             </button>
           ))}
