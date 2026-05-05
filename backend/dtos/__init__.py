@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel
 
 from models import Status
@@ -9,6 +10,7 @@ class CreateJobRequest(BaseModel):
     prompt: str
     num_thumbnails: int
     headshot_url: str
+    headshot_file_id: Optional[str] = None
 
 
 class CreateJobResponse(BaseModel):

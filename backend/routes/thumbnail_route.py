@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import Depends, APIRouter, HTTPException
+from fastapi.responses import Response
 from sqlmodel import Session, select
 
 from database import get_session
@@ -8,7 +9,7 @@ from models.thumbnail import Thumbnail
 from models.job import Job
 from models.enums import Status
 
-from services.imagekit_service import get_variants
+from services.imagekit_service import get_variants, delete_file
 from dtos import ThumbnailResponse
 from utils import get_current_user
 
@@ -92,3 +93,52 @@ def get_thumbnail(
         prompt=job.prompt if job else None,
         created_at=thumbnail.created_at,
     )
+
+
+@router.delete("/thumbnails/{thumbnail_id}", status_code=204)
+def delete_thumbnail(
+    thumbnail_id: str,
+    session: Session = Depends(get_session),
+    user_id: str = Depends(get_current_user)
+):
+    logger.info("thumbnail_delete_requested", extra={"user_id": user_id, "thumbnail_id": thumbnail_id})
+    thumbnail = session.get(Thumbnail, thumbnail_id)
+    if not thumbnail:
+        logger.warning("thumbnail_delete_not_found", extra={"user_id": user_id, "thumbnail_id": thumbnail_id})
+        raise HTTPException(status_code=404, detail=f"Thumbnail {thumbnail_id} not found")
+    if thumbnail.user_id != user_id:
+        logger.warning(
+            "thumbnail_delete_access_denied",
+            extra={"user_id": user_id, "thumbnail_id": thumbnail_id, "owner_id": thumbnail.user_id},
+        )
+        raise HTTPException(status_code=403, detail="Access denied")
+    if thumbnail.status in (Status.PENDING.value, Status.GENERATING.value):
+        logger.warning(
+            "thumbnail_delete_blocked_in_progress",
+            extra={"user_id": user_id, "thumbnail_id": thumbnail_id, "status": thumbnail.status},
+        )
+        raise HTTPException(status_code=409, detail=f"Cannot delete thumbnail with status '{thumbnail.status}'")
+
+    if thumbnail.imagekit_file_id:
+        try:
+            delete_file(thumbnail.imagekit_file_id)
+        except Exception:
+            logger.warning("thumbnail_delete_imagekit_failed", extra={"thumbnail_id": thumbnail_id})
+
+    job = session.get(Job, thumbnail.job_id)
+    session.delete(thumbnail)
+    if job:
+        job.thumbnails_deleted += 1  # type: ignore
+        session.add(job)
+    session.commit()
+    logger.info(
+        "thumbnail_deleted",
+        extra={
+            "user_id": user_id,
+            "thumbnail_id": thumbnail_id,
+            "job_id": thumbnail.job_id,
+            "thumbnails_deleted": job.thumbnails_deleted if job else None,
+            "num_thumbnails": job.num_thumbnails if job else None,
+        },
+    )
+    return Response(status_code=204)

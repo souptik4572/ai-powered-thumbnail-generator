@@ -66,7 +66,7 @@ async def generate_single_thumbnail(thumbnail_id: str, prompt: str, headshot_url
                 return
             job_id = thumbnail.job_id  # type: ignore
         # Upload the generated image to ImageKit
-        image_url = upload_file(
+        image_url, image_file_id = upload_file(
             file_bytes=image_bytes,
             file_name=f"{thumbnail_id}.png",
             folder=f"thumbnails/{job_id}"
@@ -75,6 +75,7 @@ async def generate_single_thumbnail(thumbnail_id: str, prompt: str, headshot_url
         with Session(engine) as session:
             thumbnail = session.get(Thumbnail, thumbnail_id)
             thumbnail.imagekit_url = image_url  # type: ignore
+            thumbnail.imagekit_file_id = image_file_id  # type: ignore
             thumbnail.status = Status.UPLOADED.value  # type: ignore
             session.add(thumbnail)
             session.commit()

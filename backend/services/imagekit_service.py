@@ -8,8 +8,8 @@ imagekit = ImageKit(private_key=IMAGEKIT_PRIVATE_KEY)
 logger = logging.getLogger(__name__)
 
 
-def upload_file(file_bytes: bytes, file_name: str, folder: str, content_type: str = "image/jpeg") -> str:
-    """Uploads an image to ImageKit and returns the CDN URL of the uploaded image."""
+def upload_file(file_bytes: bytes, file_name: str, folder: str, content_type: str = "image/jpeg") -> tuple[str, str]:
+    """Uploads an image to ImageKit and returns (cdn_url, file_id)."""
     file_name_hash = hash_identifier(file_name)
     logger.info(
         "imagekit_upload_started",
@@ -27,11 +27,19 @@ def upload_file(file_bytes: bytes, file_name: str, folder: str, content_type: st
         is_private_file=False,
         use_unique_file_name=True
     )
-    if not response.url:
+    if not response.url or not response.file_id:
         logger.error("imagekit_upload_missing_url", extra={"file_name_hash": file_name_hash, "folder": folder})
-        raise ValueError("ImageKit upload succeeded but no URL was returned")
+        raise ValueError("ImageKit upload succeeded but no URL or file_id was returned")
     logger.info("imagekit_upload_completed", extra={"file_name_hash": file_name_hash, "folder": folder})
-    return response.url
+    return response.url, response.file_id
+
+
+def delete_file(file_id: str) -> None:
+    """Deletes a file from ImageKit by its file ID."""
+    file_id_hash = hash_identifier(file_id)
+    logger.info("imagekit_delete_started", extra={"file_id_hash": file_id_hash})
+    imagekit.files.delete(file_id)
+    logger.info("imagekit_delete_completed", extra={"file_id_hash": file_id_hash})
 
 
 def get_variants(base_url: str) -> dict:

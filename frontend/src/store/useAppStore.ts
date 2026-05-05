@@ -74,6 +74,7 @@ interface AppState {
   startNewJob: () => void;
   viewJob: (job: BackendJob) => void;
   viewThumbnail: (thumbnail: BackendThumbnail) => void;
+  removeThumbnailFromSelectedJob: (thumbnailId: string) => void;
 }
 
 const useAppStore = create<AppState>()(
@@ -126,6 +127,12 @@ const useAppStore = create<AppState>()(
         set({ jobId: null, liveThumbnails: [], jobError: null, headshotPreview: null, headshotUrl: null, prompt: '', styleSel: 'clean_minimal', aspect: 'yt', count: 3 }),
       viewJob: (job) => set({ selectedJob: job, screen: 'job-detail' }),
       viewThumbnail: (thumbnail) => set({ selectedThumbnail: thumbnail, screen: 'thumbnail-detail' }),
+      removeThumbnailFromSelectedJob: (thumbnailId) =>
+        set((s) => ({
+          selectedJob: s.selectedJob
+            ? { ...s.selectedJob, thumbnails: s.selectedJob.thumbnails.filter((t) => t.id !== thumbnailId) }
+            : null,
+        })),
     }),
     {
       name: 'hookframe-storage',

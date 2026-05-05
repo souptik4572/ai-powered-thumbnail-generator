@@ -15,6 +15,7 @@ class Thumbnail(SQLModel, table=True):
     job_id: str = Field(foreign_key="job.id")
     style_name: str = Field(default="")
     imagekit_url: Optional[str] = Field(default=None)
+    imagekit_file_id: Optional[str] = Field(default=None)
     status: str = Field(default=Status.PENDING.value)
     error_message: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=_now)

@@ -4,6 +4,7 @@ import Icon from './Icon';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useToast } from '../hooks/useToast';
 import { downloadImage } from './ThumbnailDownloadOverlay';
+import { deleteThumbnail } from '../api';
 
 const STYLE_LABELS: Record<string, string> = {
   bold_dramatic: 'Bold Dramatic',
@@ -99,10 +100,12 @@ function Breadcrumb({ prompt, styleLabel }: { prompt: string; styleLabel: string
 // ─── Main ThumbnailDetail screen ──────────────────────────────────────────────
 
 export default function ThumbnailDetail() {
-  const { selectedThumbnail, selectedJob, setScreen } = useAppStore();
+  const { selectedThumbnail, selectedJob, token, setScreen, removeThumbnailFromSelectedJob } = useAppStore();
   const { isMobile } = useBreakpoint();
   const toast = useToast();
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (!selectedThumbnail) {
     setScreen('history');
@@ -110,6 +113,22 @@ export default function ThumbnailDetail() {
   }
 
   const thumb = selectedThumbnail;
+
+  async function handleDeleteThumbnail() {
+    if (!token) return;
+    setDeleting(true);
+    try {
+      await deleteThumbnail(thumb.id, token);
+      removeThumbnailFromSelectedJob(thumb.id);
+      toast.success('Thumbnail deleted');
+      setScreen(selectedJob ? 'job-detail' : 'history');
+    } catch (err) {
+      toast.error((err as Error).message ?? 'Failed to delete thumbnail');
+      setConfirmingDelete(false);
+    } finally {
+      setDeleting(false);
+    }
+  }
   const styleLabel = STYLE_LABELS[thumb.style_name] ?? thumb.style_name;
   const prompt = selectedJob?.prompt ?? thumb.prompt ?? '';
   const isUploaded = thumb.status === 'UPLOADED';
@@ -286,6 +305,56 @@ export default function ThumbnailDetail() {
             </button>
           </div>
         )}
+
+        {/* Delete thumbnail */}
+        <div className="clay-card surface-3" style={{ padding: 18, borderRadius: 24 }}>
+          <div style={{ marginBottom: 14 }}>
+            <div className="font-display" style={{ fontWeight: 900, fontSize: 14 }}>Delete thumbnail</div>
+            <div style={{ fontSize: 12, color: 'var(--clay-muted)', marginTop: 2, lineHeight: 1.5 }}>
+              Permanently remove this image.
+            </div>
+          </div>
+          {confirmingDelete ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--clay-muted)' }}>
+                This cannot be undone.
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setConfirmingDelete(false)}
+                  className="clay-btn clay-btn-secondary"
+                  style={{ height: 40, fontSize: 13, flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteThumbnail}
+                  disabled={deleting}
+                  className="clay-btn"
+                  style={{
+                    height: 40, fontSize: 13, flex: 1, gap: 6,
+                    background: '#EF4444', color: '#fff', border: 'none',
+                    boxShadow: 'none', opacity: deleting ? 0.7 : 1,
+                    cursor: deleting ? 'wait' : 'pointer',
+                  }}
+                >
+                  {deleting
+                    ? <Icon name="loader" size={14} />
+                    : <><Icon name="trash" size={14} /> Delete</>
+                  }
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              className="clay-btn clay-btn-secondary"
+              style={{ height: 44, fontSize: 13, width: '100%', gap: 6 }}
+            >
+              <Icon name="trash" size={15} /> Delete thumbnail
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import Optional
 
 from fastapi import Depends, HTTPException, UploadFile, File, APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from sqlmodel import Session, select, col
 
 from database import get_session
@@ -15,7 +15,7 @@ from models.enums import Status
 from models.credits_bucket import CreditsBucket
 
 from services.generator import process_job, STYLES_ORDER
-from services.imagekit_service import upload_file, get_variants
+from services.imagekit_service import upload_file, get_variants, delete_file
 from dtos import CreateJobRequest, CreateJobResponse, JobResponse, ThumbnailResponse
 from utils import get_current_user
 from utils.logging import hash_identifier
@@ -33,7 +33,7 @@ async def upload_headshot(file: UploadFile = File(...)):
         extra={"file_name_hash": file_name_hash, "content_type": file.content_type},
     )
     contents = await file.read()
-    url = upload_file(
+    url, file_id = upload_file(
         file_bytes=contents,
         file_name=file.filename or "headshot.png",
         folder="headshots",
@@ -43,7 +43,7 @@ async def upload_headshot(file: UploadFile = File(...)):
         "headshot_upload_completed",
         extra={"file_name_hash": file_name_hash, "content_length": len(contents)},
     )
-    return {"url": url}
+    return {"url": url, "file_id": file_id}
 
 
 @router.post("/jobs", response_model=CreateJobResponse)
@@ -81,6 +81,7 @@ async def create_job(request: CreateJobRequest, session: Session = Depends(get_s
         prompt=request.prompt,
         num_thumbnails=request.num_thumbnails,
         headshot_url=request.headshot_url,
+        headshot_file_id=request.headshot_file_id,
         user_id=user_id
     )
     session.add(job)
@@ -191,6 +192,40 @@ def get_job(job_id: str, session: Session = Depends(get_session)):
         status=job.status,  # type: ignore
         thumbnails=thumbnail_response
     )
+
+
+@router.delete("/jobs/{job_id}", status_code=204)
+def delete_job(job_id: str, session: Session = Depends(get_session), user_id: str = Depends(get_current_user)):
+    logger.info("job_delete_requested", extra={"job_id": job_id, "user_id": user_id})
+    job = session.get(Job, job_id)
+    if not job:
+        logger.warning("job_delete_not_found", extra={"job_id": job_id})
+        raise HTTPException(status_code=404, detail=f"Job with id {job_id} not found")
+    if job.user_id != user_id:
+        logger.warning("job_delete_forbidden", extra={"job_id": job_id, "user_id": user_id})
+        raise HTTPException(status_code=403, detail="Not authorized to delete this job")
+
+    thumbnails = session.exec(select(Thumbnail).where(Thumbnail.job_id == job_id)).all()
+
+    for thumbnail in thumbnails:
+        if thumbnail.imagekit_file_id:
+            try:
+                delete_file(thumbnail.imagekit_file_id)
+            except Exception:
+                logger.warning("job_delete_imagekit_thumbnail_failed", extra={"thumbnail_id": thumbnail.id, "job_id": job_id})
+
+    if job.headshot_file_id:
+        try:
+            delete_file(job.headshot_file_id)
+        except Exception:
+            logger.warning("job_delete_imagekit_headshot_failed", extra={"job_id": job_id})
+
+    for thumbnail in thumbnails:
+        session.delete(thumbnail)
+    session.delete(job)
+    session.commit()
+    logger.info("job_deleted", extra={"job_id": job_id, "user_id": user_id, "thumbnail_count": len(thumbnails)})
+    return Response(status_code=204)
 
 
 @router.get("/jobs/{job_id}/stream")

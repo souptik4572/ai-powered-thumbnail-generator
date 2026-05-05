@@ -15,6 +15,8 @@ class Job(SQLModel, table=True):
     prompt: str = Field(default="")
     num_thumbnails: int = Field(default=1, ge=1, le=3)
     headshot_url: Optional[str] = Field(default="")
+    headshot_file_id: Optional[str] = Field(default=None)
+    thumbnails_deleted: int = Field(default=0)
     status: str = Field(default=Status.PENDING.value)
     created_at: datetime = Field(default_factory=_now)
 

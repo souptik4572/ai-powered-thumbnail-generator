@@ -133,6 +133,28 @@ export async function getThumbnails(token: string): Promise<BackendThumbnail[]> 
   return res.json();
 }
 
+export async function deleteJob(jobId: string, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? `Failed to delete job: ${res.statusText}`);
+  }
+}
+
+export async function deleteThumbnail(thumbnailId: string, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/thumbnails/${thumbnailId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? `Failed to delete thumbnail: ${res.statusText}`);
+  }
+}
+
 export interface ThumbnailEvent {
   thumbnail_id: string;
   style_name: string;

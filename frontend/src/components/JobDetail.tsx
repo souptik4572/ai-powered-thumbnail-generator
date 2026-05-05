@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import useAppStore from '../store/useAppStore';
 import type { BackendThumbnail } from '../api';
+import { deleteJob } from '../api';
 import Icon from './Icon';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import ThumbnailDownloadOverlay from './ThumbnailDownloadOverlay';
+import { useToast } from '../hooks/useToast';
 
 const STYLE_LABELS: Record<string, string> = {
   bold_dramatic: 'Bold Dramatic',
@@ -166,8 +168,11 @@ function ThumbnailCard({
 // ─── Main JobDetail screen ────────────────────────────────────────────────────
 
 export default function JobDetail() {
-  const { selectedJob, setScreen, viewThumbnail } = useAppStore();
+  const { selectedJob, token, setScreen, viewThumbnail } = useAppStore();
   const { isMobile } = useBreakpoint();
+  const toast = useToast();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (!selectedJob) {
     setScreen('history');
@@ -177,6 +182,21 @@ export default function JobDetail() {
   const job = selectedJob;
   const uploaded = job.thumbnails.filter((t) => t.status === 'UPLOADED').length;
   const cols = isMobile ? 1 : Math.min(job.thumbnails.length, 3);
+
+  async function handleDeleteJob() {
+    if (!token) return;
+    setDeleting(true);
+    try {
+      await deleteJob(job.id, token);
+      toast.success('Job deleted');
+      setScreen('history');
+    } catch (err) {
+      toast.error((err as Error).message ?? 'Failed to delete job');
+      setConfirmingDelete(false);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="clay-card screen-enter" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40 }}>
@@ -218,6 +238,45 @@ export default function JobDetail() {
             }}>
               {job.status}
             </span>
+
+            {confirmingDelete ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--clay-muted)', whiteSpace: 'nowrap' }}>
+                  Delete this job?
+                </span>
+                <button
+                  onClick={() => setConfirmingDelete(false)}
+                  className="clay-btn clay-btn-secondary"
+                  style={{ height: 34, padding: '0 12px', fontSize: 12 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteJob}
+                  disabled={deleting}
+                  className="clay-btn"
+                  style={{
+                    height: 34, padding: '0 12px', fontSize: 12, gap: 5,
+                    background: '#EF4444', color: '#fff', border: 'none',
+                    boxShadow: 'none', opacity: deleting ? 0.7 : 1,
+                    cursor: deleting ? 'wait' : 'pointer',
+                  }}
+                >
+                  {deleting
+                    ? <Icon name="loader" size={13} />
+                    : <><Icon name="trash" size={13} /> Delete</>
+                  }
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmingDelete(true)}
+                className="clay-btn clay-btn-secondary"
+                style={{ height: 34, padding: '0 12px', fontSize: 12, gap: 5 }}
+              >
+                <Icon name="trash" size={13} /> Delete job
+              </button>
+            )}
           </div>
         </div>
       </div>
