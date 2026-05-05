@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import useAppStore from '../store/useAppStore';
-import type { BackendThumbnail } from '../api';
-import { deleteJob } from '../api';
+import type { BackendJob, BackendThumbnail } from '../api';
+import { getJob, deleteJob } from '../api';
 import Icon from './Icon';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import ThumbnailDownloadOverlay from './ThumbnailDownloadOverlay';
 import { useToast } from '../hooks/useToast';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 const STYLE_LABELS: Record<string, string> = {
   bold_dramatic: 'Bold Dramatic',
@@ -36,13 +38,13 @@ function timeAgo(iso: string) {
 // ─── Breadcrumb ───────────────────────────────────────────────────────────────
 
 function Breadcrumb({ prompt }: { prompt: string }) {
-  const { setScreen } = useAppStore();
+  const navigate = useNavigate();
   const snippet = prompt.length > 42 ? prompt.slice(0, 42) + '…' : prompt;
 
   return (
     <nav style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 28, flexWrap: 'wrap' }}>
       <button
-        onClick={() => setScreen('history')}
+        onClick={() => navigate('/history')}
         style={{
           display: 'flex', alignItems: 'center', gap: 5,
           background: 'var(--clay-input-bg)', border: 0, borderRadius: 99,
@@ -127,7 +129,6 @@ function ThumbnailCard({
         </div>
       )}
 
-      {/* Style badge — fades out when overlay is visible */}
       <div style={{
         position: 'absolute', bottom: 9, left: 9,
         background: 'rgba(20,15,40,0.62)',
@@ -141,7 +142,6 @@ function ThumbnailCard({
         {label}
       </div>
 
-      {/* Status badge — non-uploaded only */}
       {!isUploaded && (
         <div style={{
           position: 'absolute', top: 9, right: 9,
@@ -168,28 +168,44 @@ function ThumbnailCard({
 // ─── Main JobDetail screen ────────────────────────────────────────────────────
 
 export default function JobDetail() {
-  const { selectedJob, token, setScreen, viewThumbnail } = useAppStore();
+  const { jobId } = useParams<{ jobId: string }>();
+  const navigate = useNavigate();
+  const { selectedJob, token, setSelectedJob, setSelectedThumbnail } = useAppStore();
   const { isMobile } = useBreakpoint();
   const toast = useToast();
+
+  const [job, setJob] = useState<BackendJob | null>(
+    selectedJob?.id === jobId ? selectedJob : null
+  );
+  const [fetchLoading, setFetchLoading] = useState(!job);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  if (!selectedJob) {
-    setScreen('history');
-    return null;
-  }
+  useEffect(() => {
+    if (!jobId) { navigate('/history', { replace: true }); return; }
+    if (selectedJob?.id === jobId) { setJob(selectedJob); setFetchLoading(false); return; }
+    setFetchLoading(true);
+    getJob(jobId, token ?? undefined)
+      .then((data) => { setJob(data); setSelectedJob(data); setFetchLoading(false); })
+      .catch((err: unknown) => {
+        setFetchError((err as Error).message ?? 'Failed to load job');
+        setFetchLoading(false);
+      });
+  }, [jobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const job = selectedJob;
-  const uploaded = job.thumbnails.filter((t) => t.status === 'UPLOADED').length;
-  const cols = isMobile ? 1 : Math.min(job.thumbnails.length, 3);
+  // Keep local job in sync when selectedJob is updated (e.g. thumbnail deleted)
+  useEffect(() => {
+    if (selectedJob?.id === jobId) setJob(selectedJob);
+  }, [selectedJob, jobId]);
 
   async function handleDeleteJob() {
-    if (!token) return;
+    if (!token || !job) return;
     setDeleting(true);
     try {
       await deleteJob(job.id, token);
       toast.success('Job deleted');
-      setScreen('history');
+      navigate('/history');
     } catch (err) {
       toast.error((err as Error).message ?? 'Failed to delete job');
       setConfirmingDelete(false);
@@ -197,6 +213,30 @@ export default function JobDetail() {
       setDeleting(false);
     }
   }
+
+  if (fetchLoading) {
+    return (
+      <div className="clay-card screen-enter" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40, textAlign: 'center', color: 'var(--clay-muted)' }}>
+        <Icon name="loader" size={28} className="spinning" />
+        <style>{`.spinning { animation: spin-slow 0.8s linear infinite; margin-top: 8px; }`}</style>
+      </div>
+    );
+  }
+
+  if (fetchError || !job) {
+    return (
+      <div className="clay-card screen-enter" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40, textAlign: 'center' }}>
+        <div style={{ color: '#EF4444', marginBottom: 12 }}><Icon name="x" size={32} /></div>
+        <div style={{ fontWeight: 700, marginBottom: 16 }}>{fetchError ?? 'Job not found'}</div>
+        <button onClick={() => navigate('/history')} className="clay-btn clay-btn-secondary" style={{ height: 44 }}>
+          <Icon name="arrowLeft" size={15} /> Back to history
+        </button>
+      </div>
+    );
+  }
+
+  const uploaded = job.thumbnails.filter((t) => t.status === 'UPLOADED').length;
+  const cols = isMobile ? 1 : Math.min(job.thumbnails.length, 3);
 
   return (
     <div className="clay-card screen-enter" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40 }}>
@@ -238,45 +278,13 @@ export default function JobDetail() {
             }}>
               {job.status}
             </span>
-
-            {confirmingDelete ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--clay-muted)', whiteSpace: 'nowrap' }}>
-                  Delete this job?
-                </span>
-                <button
-                  onClick={() => setConfirmingDelete(false)}
-                  className="clay-btn clay-btn-secondary"
-                  style={{ height: 34, padding: '0 12px', fontSize: 12 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteJob}
-                  disabled={deleting}
-                  className="clay-btn"
-                  style={{
-                    height: 34, padding: '0 12px', fontSize: 12, gap: 5,
-                    background: '#EF4444', color: '#fff', border: 'none',
-                    boxShadow: 'none', opacity: deleting ? 0.7 : 1,
-                    cursor: deleting ? 'wait' : 'pointer',
-                  }}
-                >
-                  {deleting
-                    ? <Icon name="loader" size={13} />
-                    : <><Icon name="trash" size={13} /> Delete</>
-                  }
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmingDelete(true)}
-                className="clay-btn clay-btn-secondary"
-                style={{ height: 34, padding: '0 12px', fontSize: 12, gap: 5 }}
-              >
-                <Icon name="trash" size={13} /> Delete job
-              </button>
-            )}
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              className="clay-btn clay-btn-secondary"
+              style={{ height: 34, padding: '0 12px', fontSize: 12, gap: 5 }}
+            >
+              <Icon name="trash" size={13} /> Delete job
+            </button>
           </div>
         </div>
       </div>
@@ -296,10 +304,23 @@ export default function JobDetail() {
             <ThumbnailCard
               key={thumbnail.id}
               thumbnail={thumbnail}
-              onViewDetails={() => viewThumbnail(thumbnail)}
+              onViewDetails={() => {
+                setSelectedThumbnail(thumbnail);
+                navigate('/thumbnails/' + thumbnail.id);
+              }}
             />
           ))}
         </div>
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDeleteModal
+          title="Delete this job?"
+          description="This will permanently delete the job and all its thumbnails. This action cannot be undone."
+          loading={deleting}
+          onConfirm={handleDeleteJob}
+          onCancel={() => setConfirmingDelete(false)}
+        />
       )}
     </div>
   );

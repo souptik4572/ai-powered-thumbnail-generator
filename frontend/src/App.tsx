@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import useAppStore from './store/useAppStore';
 import type { Accent } from './store/useAppStore';
 import BlobField from './components/BlobField';
@@ -21,8 +22,31 @@ const ACCENT_PRESETS: Record<Accent, { main: string; light: string; pink: string
   amber:  { main: '#F59E0B', light: '#FCD34D', pink: '#DB2777' },
 };
 
+// Renders the authenticated shell (nav + footer) with child routes via <Outlet>
+function ProtectedShell() {
+  const token = useAppStore((s) => s.token);
+  if (!token) return <Navigate to="/auth" replace />;
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <TopNav />
+      <main className="page-main" style={{ flex: 1 }}>
+        <Outlet />
+      </main>
+      <AppFooter />
+    </div>
+  );
+}
+
+// Sub-screen switcher for the /generate route — stays at same URL while job progresses
+function GeneratePage() {
+  const generateView = useAppStore((s) => s.generateView);
+  if (generateView === 'loading') return <Loading key="loading" />;
+  if (generateView === 'results') return <Results key="results" />;
+  return <Generator key="form" />;
+}
+
 export default function App() {
-  const { screen, theme, accent, showBlobs } = useAppStore();
+  const { theme, accent, showBlobs, token } = useAppStore();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -35,31 +59,27 @@ export default function App() {
     document.documentElement.style.setProperty('--clay-accent-pink',  a.pink);
   }, [accent]);
 
-  const showShell = screen !== 'auth';
-
   return (
     <>
       {showBlobs && <BlobField />}
 
-      {!showShell ? (
-        <AuthScreen />
-      ) : (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <TopNav />
+      <Routes>
+        {/* Public auth route — redirect to /generate if already logged in */}
+        <Route
+          path="/auth"
+          element={token ? <Navigate to="/generate" replace /> : <AuthScreen />}
+        />
 
-          {/* key forces re-mount → screen-enter animation plays on every navigation */}
-          <main key={screen} className="page-main" style={{ flex: 1 }}>
-            {screen === 'generator'        && <Generator />}
-            {screen === 'loading'          && <Loading />}
-            {screen === 'results'          && <Results />}
-            {screen === 'history'          && <History />}
-            {screen === 'job-detail'       && <JobDetail />}
-            {screen === 'thumbnail-detail' && <ThumbnailDetail />}
-          </main>
-
-          <AppFooter />
-        </div>
-      )}
+        {/* Protected routes — all share the TopNav + Footer shell */}
+        <Route element={<ProtectedShell />}>
+          <Route index element={<Navigate to="/generate" replace />} />
+          <Route path="/generate"                   element={<GeneratePage />} />
+          <Route path="/history"                    element={<History />} />
+          <Route path="/jobs/:jobId"                element={<JobDetail />} />
+          <Route path="/thumbnails/:thumbnailId"    element={<ThumbnailDetail />} />
+          <Route path="*"                           element={<Navigate to="/generate" replace />} />
+        </Route>
+      </Routes>
 
       <ToastContainer />
     </>

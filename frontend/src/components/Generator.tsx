@@ -66,7 +66,7 @@ export default function Generator() {
     styleSel, setStyleSel,
     count, setCount,
     token, credits,
-    setJobId, clearLiveThumbnails, setScreen,
+    setJobId, clearLiveThumbnails, setGenerateView,
   } = useAppStore();
 
   const { isMobile, isTablet } = useBreakpoint();
@@ -115,7 +115,7 @@ export default function Generator() {
       const { job_id } = await createJob({ prompt, numThumbnails: count, headshotUrl: imgUrl }, token);
       setJobId(job_id);
       clearLiveThumbnails();
-      setScreen('loading');
+      setGenerateView('loading');
     } catch (err: unknown) {
       toast.error((err as Error).message ?? 'Something went wrong. Please try again.');
     } finally {

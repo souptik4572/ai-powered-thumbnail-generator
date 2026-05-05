@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAppStore from '../store/useAppStore';
 import { loginUser, registerUser } from '../api';
 import Icon from './Icon';
@@ -7,6 +8,7 @@ import { useToast } from '../hooks/useToast';
 
 export default function AuthScreen() {
   const { login, toggleTheme, theme } = useAppStore();
+  const navigate = useNavigate();
   const toast = useToast();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -30,6 +32,7 @@ export default function AuthScreen() {
         login({ email, name: name || email.split('@')[0] }, res.jwt_token);
         toast.success('Account created! Welcome to Hookframe.');
       }
+      navigate('/generate');
     } catch (err: unknown) {
       toast.error((err as Error).message ?? 'Something went wrong. Please try again.');
     } finally {

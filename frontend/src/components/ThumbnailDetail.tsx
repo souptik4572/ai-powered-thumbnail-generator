@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import useAppStore from '../store/useAppStore';
 import Icon from './Icon';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useToast } from '../hooks/useToast';
 import { downloadImage } from './ThumbnailDownloadOverlay';
-import { deleteThumbnail } from '../api';
+import { getThumbnail, deleteThumbnail } from '../api';
+import type { BackendThumbnail } from '../api';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 const STYLE_LABELS: Record<string, string> = {
   bold_dramatic: 'Bold Dramatic',
@@ -28,14 +31,14 @@ const ASPECTS = [
 
 // ─── Breadcrumb ───────────────────────────────────────────────────────────────
 
-function Breadcrumb({ prompt, styleLabel }: { prompt: string; styleLabel: string }) {
-  const { setScreen, selectedJob } = useAppStore();
+function Breadcrumb({ prompt, styleLabel, jobId }: { prompt: string; styleLabel: string; jobId: string | null }) {
+  const navigate = useNavigate();
   const snippet = prompt.length > 36 ? prompt.slice(0, 36) + '…' : prompt;
 
   return (
     <nav style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 28, flexWrap: 'wrap' }}>
       <button
-        onClick={() => setScreen('history')}
+        onClick={() => navigate('/history')}
         style={{
           display: 'flex', alignItems: 'center', gap: 5,
           background: 'var(--clay-input-bg)', border: 0, borderRadius: 99,
@@ -58,10 +61,10 @@ function Breadcrumb({ prompt, styleLabel }: { prompt: string; styleLabel: string
 
       <span style={{ fontSize: 12, color: 'var(--clay-muted)', fontWeight: 700, userSelect: 'none' }}>›</span>
 
-      {selectedJob && (
+      {jobId && (
         <>
           <button
-            onClick={() => setScreen('job-detail')}
+            onClick={() => navigate('/jobs/' + jobId)}
             style={{
               display: 'flex', alignItems: 'center',
               background: 'var(--clay-input-bg)', border: 0, borderRadius: 99,
@@ -100,28 +103,42 @@ function Breadcrumb({ prompt, styleLabel }: { prompt: string; styleLabel: string
 // ─── Main ThumbnailDetail screen ──────────────────────────────────────────────
 
 export default function ThumbnailDetail() {
-  const { selectedThumbnail, selectedJob, token, setScreen, removeThumbnailFromSelectedJob } = useAppStore();
+  const { thumbnailId } = useParams<{ thumbnailId: string }>();
+  const navigate = useNavigate();
+  const { selectedThumbnail, selectedJob, token, removeThumbnailFromSelectedJob } = useAppStore();
   const { isMobile } = useBreakpoint();
   const toast = useToast();
+
+  const [thumb, setThumb] = useState<BackendThumbnail | null>(
+    selectedThumbnail?.id === thumbnailId ? selectedThumbnail : null
+  );
+  const [fetchLoading, setFetchLoading] = useState(!thumb);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  if (!selectedThumbnail) {
-    setScreen('history');
-    return null;
-  }
-
-  const thumb = selectedThumbnail;
+  useEffect(() => {
+    if (!thumbnailId) { navigate('/history', { replace: true }); return; }
+    if (selectedThumbnail?.id === thumbnailId) { setThumb(selectedThumbnail); setFetchLoading(false); return; }
+    if (!token) { navigate('/auth', { replace: true }); return; }
+    setFetchLoading(true);
+    getThumbnail(thumbnailId, token)
+      .then((data) => { setThumb(data); setFetchLoading(false); })
+      .catch((err: unknown) => {
+        setFetchError((err as Error).message ?? 'Failed to load thumbnail');
+        setFetchLoading(false);
+      });
+  }, [thumbnailId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleDeleteThumbnail() {
-    if (!token) return;
+    if (!token || !thumb) return;
     setDeleting(true);
     try {
       await deleteThumbnail(thumb.id, token);
       removeThumbnailFromSelectedJob(thumb.id);
       toast.success('Thumbnail deleted');
-      setScreen(selectedJob ? 'job-detail' : 'history');
+      navigate(thumb.job_id ? `/jobs/${thumb.job_id}` : '/history');
     } catch (err) {
       toast.error((err as Error).message ?? 'Failed to delete thumbnail');
       setConfirmingDelete(false);
@@ -129,7 +146,30 @@ export default function ThumbnailDetail() {
       setDeleting(false);
     }
   }
+
+  if (fetchLoading) {
+    return (
+      <div className="clay-card screen-enter" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40, textAlign: 'center', color: 'var(--clay-muted)' }}>
+        <Icon name="loader" size={28} className="spinning" />
+        <style>{`.spinning { animation: spin-slow 0.8s linear infinite; margin-top: 8px; }`}</style>
+      </div>
+    );
+  }
+
+  if (fetchError || !thumb) {
+    return (
+      <div className="clay-card screen-enter" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40, textAlign: 'center' }}>
+        <div style={{ color: '#EF4444', marginBottom: 12 }}><Icon name="x" size={32} /></div>
+        <div style={{ fontWeight: 700, marginBottom: 16 }}>{fetchError ?? 'Thumbnail not found'}</div>
+        <button onClick={() => navigate('/history')} className="clay-btn clay-btn-secondary" style={{ height: 44 }}>
+          <Icon name="arrowLeft" size={15} /> Back to history
+        </button>
+      </div>
+    );
+  }
+
   const styleLabel = STYLE_LABELS[thumb.style_name] ?? thumb.style_name;
+  const jobId = thumb.job_id ?? selectedJob?.id ?? null;
   const prompt = selectedJob?.prompt ?? thumb.prompt ?? '';
   const isUploaded = thumb.status === 'UPLOADED';
 
@@ -142,7 +182,7 @@ export default function ThumbnailDetail() {
 
       {/* LEFT: hero image */}
       <div className="clay-card" style={{ padding: isMobile ? 20 : 36, borderRadius: isMobile ? 28 : 40 }}>
-        <Breadcrumb prompt={prompt} styleLabel={styleLabel} />
+        <Breadcrumb prompt={prompt} styleLabel={styleLabel} jobId={jobId} />
 
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
@@ -287,7 +327,7 @@ export default function ThumbnailDetail() {
         </div>
 
         {/* Back to job */}
-        {selectedJob && (
+        {jobId && (
           <div className="clay-card surface-3" style={{ padding: 18, borderRadius: 24 }}>
             <div style={{ marginBottom: 14 }}>
               <div className="font-display" style={{ fontWeight: 900, fontSize: 14 }}>All variations</div>
@@ -296,7 +336,7 @@ export default function ThumbnailDetail() {
               </div>
             </div>
             <button
-              onClick={() => setScreen('job-detail')}
+              onClick={() => navigate('/jobs/' + jobId)}
               className="clay-btn clay-btn-secondary"
               style={{ height: 44, fontSize: 13, width: '100%' }}
             >
@@ -314,48 +354,25 @@ export default function ThumbnailDetail() {
               Permanently remove this image.
             </div>
           </div>
-          {confirmingDelete ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--clay-muted)' }}>
-                This cannot be undone.
-              </span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => setConfirmingDelete(false)}
-                  className="clay-btn clay-btn-secondary"
-                  style={{ height: 40, fontSize: 13, flex: 1 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteThumbnail}
-                  disabled={deleting}
-                  className="clay-btn"
-                  style={{
-                    height: 40, fontSize: 13, flex: 1, gap: 6,
-                    background: '#EF4444', color: '#fff', border: 'none',
-                    boxShadow: 'none', opacity: deleting ? 0.7 : 1,
-                    cursor: deleting ? 'wait' : 'pointer',
-                  }}
-                >
-                  {deleting
-                    ? <Icon name="loader" size={14} />
-                    : <><Icon name="trash" size={14} /> Delete</>
-                  }
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmingDelete(true)}
-              className="clay-btn clay-btn-secondary"
-              style={{ height: 44, fontSize: 13, width: '100%', gap: 6 }}
-            >
-              <Icon name="trash" size={15} /> Delete thumbnail
-            </button>
-          )}
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            className="clay-btn clay-btn-secondary"
+            style={{ height: 44, fontSize: 13, width: '100%', gap: 6 }}
+          >
+            <Icon name="trash" size={15} /> Delete thumbnail
+          </button>
         </div>
       </div>
+
+      {confirmingDelete && (
+        <ConfirmDeleteModal
+          title="Delete this thumbnail?"
+          description="This will permanently remove the image from storage. This action cannot be undone."
+          loading={deleting}
+          onConfirm={handleDeleteThumbnail}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </div>
   );
 }

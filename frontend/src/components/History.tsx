@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAppStore from '../store/useAppStore';
 import { getJobs } from '../api';
 import type { BackendJob, BackendThumbnail } from '../api';
@@ -301,7 +302,8 @@ function EmptyHistory({ onNew }: { onNew: () => void }) {
 // ─── Main History screen ──────────────────────────────────────────────────────
 
 export default function History() {
-  const { token, setScreen, startNewJob, viewJob } = useAppStore();
+  const { token, startNewJob, setSelectedJob } = useAppStore();
+  const navigate = useNavigate();
   const { isMobile } = useBreakpoint();
   const [jobs, setJobs] = useState<BackendJob[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -337,7 +339,7 @@ export default function History() {
       (statusFilter === 'all' || job.thumbnails.some((t) => t.status === statusFilter))
   );
 
-  const handleNew = () => { startNewJob(); setScreen('generator'); };
+  const handleNew = () => { startNewJob(); navigate('/generate'); };
 
   const totalThumbnails = jobs.reduce((acc, job) => acc + job.thumbnails.length, 0);
 
@@ -444,7 +446,11 @@ export default function History() {
       ) : (
         <div className="history-grid">
           {filtered.map((job) => (
-            <HistoryCard key={job.id} job={job} onView={() => viewJob(job)} />
+            <HistoryCard
+              key={job.id}
+              job={job}
+              onView={() => { setSelectedJob(job); navigate('/jobs/' + job.id); }}
+            />
           ))}
         </div>
       )}

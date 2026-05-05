@@ -73,8 +73,10 @@ export async function createJob(
   return res.json();
 }
 
-export async function getJob(jobId: string) {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}`);
+export async function getJob(jobId: string, token?: string): Promise<BackendJob> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/jobs/${jobId}`, { headers });
   if (!res.ok) throw new Error(`Get job failed: ${res.statusText}`);
   return res.json();
 }

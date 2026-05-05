@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useAppStore from '../store/useAppStore';
 import type { Accent } from '../store/useAppStore';
 import Icon from './Icon';
@@ -15,10 +16,12 @@ const ACCENTS: { id: Accent; color: string; label: string }[] = [
 
 export default function TopNav() {
   const {
-    screen, setScreen, user, logout,
+    user, logout, setGenerateView,
     theme, toggleTheme, token, credits, setCredits,
     accent, setAccent, showBlobs, setShowBlobs,
   } = useAppStore();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { isMobile } = useBreakpoint();
   const dark = theme === 'dark';
 
@@ -28,7 +31,7 @@ export default function TopNav() {
   useEffect(() => {
     if (!token) return;
     getCredits(token).then((d) => setCredits(d.credits)).catch(() => {});
-  }, [token, screen, setCredits]);
+  }, [token, location.pathname, setCredits]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -50,7 +53,7 @@ export default function TopNav() {
     return () => document.removeEventListener('keydown', handler);
   }, [menuOpen]);
 
-  const activeTab = screen === 'loading' || screen === 'results' ? 'generator' : screen;
+  const activeTab = location.pathname.startsWith('/history') ? 'history' : 'generator';
 
   return (
     <header className="nav-header">
@@ -63,7 +66,7 @@ export default function TopNav() {
 
         {/* Logo */}
         <button
-          onClick={() => setScreen('generator')}
+          onClick={() => { setGenerateView('form'); navigate('/generate'); }}
           aria-label="Go to generator"
           style={{
             display: 'flex', alignItems: 'center', gap: 9,
@@ -102,7 +105,10 @@ export default function TopNav() {
             return (
               <button
                 key={t.id}
-                onClick={() => setScreen(t.id as 'generator' | 'history')}
+                onClick={() => {
+                  if (t.id === 'generator') { setGenerateView('form'); navigate('/generate'); }
+                  else navigate('/history');
+                }}
                 aria-current={active ? 'page' : undefined}
                 className={`clay-tab${active ? ' is-active' : ''}`}
                 style={{ height: 34 }}
@@ -286,7 +292,7 @@ export default function TopNav() {
               <div style={{ padding: '8px' }}>
                 <button
                   role="menuitem"
-                  onClick={() => { setMenuOpen(false); logout(); }}
+                  onClick={() => { setMenuOpen(false); logout(); navigate('/auth'); }}
                   style={{
                     width: '100%', padding: '11px 12px',
                     display: 'flex', alignItems: 'center', gap: 10,

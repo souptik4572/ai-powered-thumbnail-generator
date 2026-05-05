@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { BackendJob, BackendThumbnail } from '../api';
 
-export type Screen = 'auth' | 'generator' | 'loading' | 'results' | 'history' | 'job-detail' | 'thumbnail-detail';
+export type GenerateView = 'form' | 'loading' | 'results';
 export type Theme = 'light' | 'dark';
 export type Accent = 'violet' | 'blue' | 'pink' | 'green' | 'amber';
 
@@ -38,7 +38,7 @@ interface AppState {
   history: HistoryEntry[];
 
   // Session
-  screen: Screen;
+  generateView: GenerateView;
   headshotPreview: string | null;
   headshotUrl: string | null;
   prompt: string;
@@ -59,7 +59,7 @@ interface AppState {
   toggleTheme: () => void;
   setAccent: (accent: Accent) => void;
   setShowBlobs: (show: boolean) => void;
-  setScreen: (screen: Screen) => void;
+  setGenerateView: (view: GenerateView) => void;
   setHeadshotPreview: (preview: string | null) => void;
   setHeadshotUrl: (url: string | null) => void;
   setPrompt: (prompt: string) => void;
@@ -72,8 +72,8 @@ interface AppState {
   setJobError: (error: string | null) => void;
   saveJobToHistory: (entry: HistoryEntry) => void;
   startNewJob: () => void;
-  viewJob: (job: BackendJob) => void;
-  viewThumbnail: (thumbnail: BackendThumbnail) => void;
+  setSelectedJob: (job: BackendJob | null) => void;
+  setSelectedThumbnail: (thumbnail: BackendThumbnail | null) => void;
   removeThumbnailFromSelectedJob: (thumbnailId: string) => void;
 }
 
@@ -86,7 +86,7 @@ const useAppStore = create<AppState>()(
       accent: 'violet',
       showBlobs: true,
       history: [],
-      screen: 'auth',
+      generateView: 'form',
       headshotPreview: null,
       headshotUrl: null,
       prompt: '',
@@ -100,13 +100,13 @@ const useAppStore = create<AppState>()(
       selectedJob: null,
       selectedThumbnail: null,
 
-      login: (user, token) => set({ user, token, screen: 'generator' }),
-      logout: () => set({ user: null, token: null, screen: 'auth', credits: null }),
+      login: (user, token) => set({ user, token }),
+      logout: () => set({ user: null, token: null, credits: null }),
       setCredits: (credits) => set({ credits }),
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       setAccent: (accent) => set({ accent }),
       setShowBlobs: (showBlobs) => set({ showBlobs }),
-      setScreen: (screen) => set({ screen }),
+      setGenerateView: (generateView) => set({ generateView }),
       setHeadshotPreview: (headshotPreview) => set({ headshotPreview }),
       setHeadshotUrl: (headshotUrl) => set({ headshotUrl }),
       setPrompt: (prompt) => set({ prompt }),
@@ -124,9 +124,9 @@ const useAppStore = create<AppState>()(
       saveJobToHistory: (entry) =>
         set((s) => ({ history: [entry, ...s.history.slice(0, 49)] })),
       startNewJob: () =>
-        set({ jobId: null, liveThumbnails: [], jobError: null, headshotPreview: null, headshotUrl: null, prompt: '', styleSel: 'clean_minimal', aspect: 'yt', count: 3 }),
-      viewJob: (job) => set({ selectedJob: job, screen: 'job-detail' }),
-      viewThumbnail: (thumbnail) => set({ selectedThumbnail: thumbnail, screen: 'thumbnail-detail' }),
+        set({ jobId: null, liveThumbnails: [], jobError: null, headshotPreview: null, headshotUrl: null, prompt: '', styleSel: 'clean_minimal', aspect: 'yt', count: 3, generateView: 'form' }),
+      setSelectedJob: (selectedJob) => set({ selectedJob }),
+      setSelectedThumbnail: (selectedThumbnail) => set({ selectedThumbnail }),
       removeThumbnailFromSelectedJob: (thumbnailId) =>
         set((s) => ({
           selectedJob: s.selectedJob
@@ -144,11 +144,6 @@ const useAppStore = create<AppState>()(
         showBlobs: s.showBlobs,
         history: s.history,
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state?.user && state?.token) {
-          state.screen = 'generator';
-        }
-      },
     }
   )
 );

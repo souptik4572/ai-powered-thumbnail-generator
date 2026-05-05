@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAppStore from '../store/useAppStore';
 import Icon from './Icon';
 import FauxThumbnail from './FauxThumbnail';
@@ -41,9 +42,10 @@ export default function Results() {
   const {
     liveThumbnails, count, prompt, styleSel, aspect,
     jobError, setJobError,
-    setScreen, clearLiveThumbnails, startNewJob,
+    setGenerateView, clearLiveThumbnails, startNewJob,
   } = useAppStore();
 
+  const navigate = useNavigate();
   const { isMobile } = useBreakpoint();
   const toast = useToast();
   const [picked, setPicked] = useState(0);
@@ -55,19 +57,18 @@ export default function Results() {
 
   const handleNew = () => {
     startNewJob();
-    setScreen('generator');
+    navigate('/generate');
   };
 
   const handleRegen = () => {
     setJobError(null);
     clearLiveThumbnails();
-    setScreen('loading');
+    setGenerateView('loading');
   };
 
   const handleTryAgain = () => {
-    setJobError(null);
-    clearLiveThumbnails();
-    setScreen('generator');
+    startNewJob();
+    navigate('/generate');
   };
 
   if (jobError && thumbs.length === 0) {

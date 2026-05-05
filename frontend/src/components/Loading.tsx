@@ -22,7 +22,7 @@ export default function Loading() {
     jobId, count, prompt, styleSel,
     aspect,
     liveThumbnails, addLiveThumbnail, clearLiveThumbnails,
-    setScreen, saveJobToHistory, setJobError,
+    setGenerateView, saveJobToHistory, setJobError,
   } = useAppStore();
 
   const { isMobile } = useBreakpoint();
@@ -46,7 +46,7 @@ export default function Loading() {
   // Subscribe to SSE stream
   useEffect(() => {
     if (!jobId) {
-      setScreen('generator');
+      setGenerateView('form');
       return;
     }
 
@@ -68,7 +68,7 @@ export default function Loading() {
         const ready = useAppStore.getState().liveThumbnails;
         if (ready.length === 0) {
           setJobError('None of the thumbnails could be generated. Please try again.');
-          setScreen('results');
+          setGenerateView('results');
           return;
         }
         saveJobToHistory({
@@ -84,7 +84,7 @@ export default function Loading() {
           `${ready.length} thumbnail${ready.length !== 1 ? 's' : ''} ready — pick your favourite!`,
           'success',
         );
-        setScreen('results');
+        setGenerateView('results');
       },
       onError: (data) => {
         const ready = useAppStore.getState().liveThumbnails;
@@ -94,7 +94,7 @@ export default function Loading() {
         } else {
           useToastStore.getState().push('Generation encountered an issue. Showing available results.', 'warning');
         }
-        setScreen('results');
+        setGenerateView('results');
       },
     });
 
@@ -107,7 +107,7 @@ export default function Loading() {
       if (ready.length === 0) {
         setJobError('Generation timed out. Please try again.');
       }
-      setScreen('results');
+      setGenerateView('results');
     }, 180_000);
 
     return () => {
