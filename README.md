@@ -1,14 +1,18 @@
 # Hookframe — AI-Powered YouTube Thumbnail Generator
 
+**Live app: [hookframe.netlify.app](https://hookframe.netlify.app/)**
+
 Upload a headshot, describe the vibe, and get professional YouTube thumbnails in seconds. Hookframe uses OpenAI's image generation API to create styled thumbnails personalised to your face.
 
 ## Features
 
 - **AI thumbnail generation** — GPT-4o + gpt-image-2 produces three distinct styles per job
 - **Three visual styles** — Bold Dramatic, Clean Minimal, Vibrant Energetic
-- **Real-time progress** — Server-Sent Events stream each thumbnail as it completes
+- **Real-time progress** — Server-Sent Events stream each thumbnail as it completes; animated progress ring eases toward 100% as generation runs
 - **Credits system** — each new account starts with 3 credits; 1 credit is consumed per job
 - **Thumbnail history** — browse every image you've generated, with download support
+- **Delete jobs & thumbnails** — logged-in users can permanently delete a job (and all its thumbnails) or a single thumbnail, with a confirmation modal
+- **Deep-linkable pages** — each section has its own URL (`/generate`, `/history`, `/jobs/:jobId`, `/thumbnails/:thumbnailId`)
 - **Dark / light theme** — persisted per user
 - **JWT authentication** — register or login, token stored locally
 
@@ -16,7 +20,7 @@ Upload a headshot, describe the vibe, and get professional YouTube thumbnails in
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19.2.5, TypeScript 6, Vite 8, Zustand 5 |
+| Frontend | React 19.2.5, TypeScript 6, Vite 8, Zustand 5, React Router 7 |
 | Backend | FastAPI, SQLModel, Alembic, Uvicorn |
 | Database | SQLite (file-based, zero config) |
 | AI | OpenAI Responses API (gpt-4o + gpt-image-2) |
@@ -114,8 +118,8 @@ Open **http://localhost:5173** in your browser, register an account, and start g
 │   │   └── enums.py          # Status, UserRole enums
 │   ├── routes/
 │   │   ├── user_route.py     # Auth + credits endpoints
-│   │   ├── job_route.py      # Job creation + polling
-│   │   └── thumbnail_route.py# Thumbnail history
+│   │   ├── job_route.py      # Job creation, polling, delete
+│   │   └── thumbnail_route.py# Thumbnail listing, detail, delete
 │   ├── services/
 │   │   ├── generator.py      # Job orchestration, credit deduction
 │   │   ├── openai_service.py # OpenAI Responses API call
@@ -127,15 +131,28 @@ Open **http://localhost:5173** in your browser, register an account, and start g
 └── frontend/
     ├── src/
     │   ├── api.ts            # All fetch calls to the backend
+    │   ├── App.tsx           # Router setup + protected-route layout
+    │   ├── main.tsx          # BrowserRouter entry point
     │   ├── store/
-    │   │   └── useAppStore.ts# Zustand store (auth, screen, credits)
+    │   │   └── useAppStore.ts# Zustand store (auth, generate view, credits)
+    │   ├── hooks/
+    │   │   ├── useBreakpoint.ts # Responsive breakpoint hook
+    │   │   └── useToast.ts      # Toast notification store + hook
     │   └── components/
-    │       ├── AuthScreen.tsx # Login / register
-    │       ├── Generator.tsx  # Main generation form
-    │       ├── Loading.tsx    # SSE progress screen
-    │       ├── Results.tsx    # Completed thumbnails
-    │       ├── History.tsx    # Past thumbnails
-    │       └── TopNav.tsx     # Nav + credits display
+    │       ├── AuthScreen.tsx          # Login / register
+    │       ├── Generator.tsx           # Main generation form
+    │       ├── Loading.tsx             # SSE progress screen with animated ring
+    │       ├── Results.tsx             # Completed thumbnails
+    │       ├── History.tsx             # Past jobs with search + filter
+    │       ├── JobDetail.tsx           # Single job view (/jobs/:jobId)
+    │       ├── ThumbnailDetail.tsx     # Single thumbnail view (/thumbnails/:thumbnailId)
+    │       ├── ThumbnailDownloadOverlay.tsx # Hover overlay with download + view buttons
+    │       ├── ConfirmDeleteModal.tsx  # Reusable deletion confirmation popup
+    │       ├── TopNav.tsx              # Nav + credits display
+    │       ├── ToastContainer.tsx      # Toast notification renderer
+    │       ├── BlobField.tsx           # Decorative animated background
+    │       ├── FauxThumbnail.tsx       # Static preview thumbnail mockup
+    │       └── Icon.tsx               # Inline SVG icon renderer
     └── vite.config.ts        # Proxies /api → localhost:8000
 ```
 
@@ -151,6 +168,7 @@ Open **http://localhost:5173** in your browser, register an account, and start g
 | TypeScript | ~6.0.2 |
 | Vite | ^8.0.10 |
 | Zustand | ^5.0.12 |
+| React Router | ^7.14.2 |
 
 React 19 is used throughout. The project uses the **automatic JSX transform** (`react-jsx`) so there is no need to `import React` in component files. TypeScript is compiled to **ES2023** in bundler mode with strict unused-variable checks enabled.
 
@@ -158,18 +176,19 @@ React 19 is used throughout. The project uses the **automatic JSX transform** (`
 
 ### Screen Flow
 
-The entire app is a single-page application. `App.tsx` renders one screen at a time based on the `screen` value in the Zustand store. `TopNav` is shown on every screen except `auth`.
+The app uses **React Router v7** (`BrowserRouter`) so every page has its own URL. Unauthenticated users are redirected to `/auth` by a `ProtectedShell` layout route. `TopNav` is rendered on every protected route.
 
 ```
-┌──────────┐   register/login   ┌───────────┐   Generate   ┌─────────┐
-│   auth   │ ─────────────────► │ generator │ ────────────► │ loading │
-└──────────┘                    └───────────┘               └────┬────┘
-                                      ▲                          │ all done
-                                      │    New thumbnail         ▼
-                                ┌─────┴──────┐            ┌─────────┐
-                                │  history   │            │ results │
-                                └────────────┘            └─────────┘
+/auth         register/login    /generate          Generate
+──────────── ────────────────► ──────────────────► /generate (loading sub-view)
+                                      ▲                  │ all done
+                                      │ New thumbnail     ▼
+                               /history           /generate (results sub-view)
+                               /jobs/:jobId  ◄─── history card click
+                               /thumbnails/:thumbnailId ◄─── job detail card click
 ```
+
+> The `loading` and `results` states live under `/generate` (controlled by `generateView` in the store) because they depend on ephemeral SSE data that would be lost on a hard refresh.
 
 ---
 
@@ -192,7 +211,7 @@ Global state lives in a single Zustand store (`src/store/useAppStore.ts`) with t
 
 | Key | Type | Description |
 |---|---|---|
-| `screen` | `Screen` | Currently visible screen |
+| `generateView` | `'form' \| 'loading' \| 'results'` | Sub-view within `/generate` |
 | `credits` | `number \| null` | Live credit balance (fetched from API) |
 | `headshotPreview` | `string \| null` | Data URL of the selected image |
 | `headshotUrl` | `string \| null` | ImageKit URL after upload |
@@ -201,8 +220,10 @@ Global state lives in a single Zustand store (`src/store/useAppStore.ts`) with t
 | `count` | `number` | Number of thumbnails to generate (1–3) |
 | `jobId` | `string \| null` | Active job ID |
 | `liveThumbnails` | `LiveThumbnail[]` | Thumbnails received via SSE |
+| `selectedJob` | `BackendJob \| null` | Cache for the last-viewed job (avoids redundant fetches) |
+| `selectedThumbnail` | `BackendThumbnail \| null` | Cache for the last-viewed thumbnail |
 
-On rehydration, if a `token` is found the app navigates straight to `generator` instead of `auth`.
+On rehydration, if a `token` is found the `ProtectedShell` layout grants access immediately; unauthenticated requests redirect to `/auth`.
 
 ---
 
@@ -223,12 +244,12 @@ A live preview panel on the right renders a `FauxThumbnail` that updates in real
 
 #### `Loading.tsx`
 Displayed while the job is processing. Subscribes to `GET /api/jobs/{job_id}/stream` via the browser `EventSource` API. Shows:
-- An animated breathing orb with a live percentage counter
+- An SVG progress ring around a breathing orb, with a live percentage counter
+- Four labelled stages: *Analyzing your headshot* → *Generating thumbnails* → *Uploading to CDN* → *Finishing up*
 - Orbiting sparkle shapes
 - A rotating list of thumbnail tips (cycles every 3.5 s)
-- A progress list that advances as thumbnails arrive
 
-Each `thumbnail_ready` SSE event calls `addLiveThumbnail()` in the store. When `job_completed` fires the store entry is saved and the screen transitions to `results`. A 3-minute safety timeout closes the connection and advances to `results` regardless, preventing the user getting stuck.
+Progress uses a two-layer approach: a time-based timer eases the bar toward 88% at a decelerating rate, while each `thumbnail_ready` SSE event snaps the bar forward to the real percentage. `job_completed` sets the bar to 100% and transitions to `results` after a 600 ms pause. A 3-minute safety timeout closes the connection and advances to `results` regardless.
 
 #### `Results.tsx`
 Shows the `liveThumbnails` array collected during the loading screen. Each thumbnail has a hover overlay with download buttons for three formats: YouTube (1280×720), Shorts (1080×1920), and Square (1080×1080). Downloads are served as binary blobs via `fetch` + `URL.createObjectURL` so the browser saves the file rather than opening it.
@@ -239,10 +260,25 @@ Fetches the full thumbnail history from `GET /api/thumbnails` (auth-gated, retur
 - 2 thumbnails → side-by-side
 - 3 thumbnails → tall left + two stacked right
 
-Includes a search bar (filters by prompt text) and style chip filters. Shows skeleton cards during loading and a friendly empty state for new users. Each card supports the same hover-download overlay as the Results screen.
+Includes a search bar (filters by prompt text) and style chip filters. Shows skeleton cards during loading and a friendly empty state for new users. Clicking a job card navigates to `/jobs/:jobId`.
+
+#### `JobDetail.tsx`
+Rendered at `/jobs/:jobId`. Fetches the job from `GET /api/jobs/{job_id}` on first visit (cache-hits via `selectedJob` on subsequent visits from History). Displays all thumbnails in a responsive grid with hover overlays. Includes a **Delete job** button that opens `ConfirmDeleteModal` and calls `DELETE /api/jobs/{job_id}` on confirmation, then navigates back to `/history`. Clicking a thumbnail navigates to `/thumbnails/:thumbnailId`.
+
+#### `ThumbnailDetail.tsx`
+Rendered at `/thumbnails/:thumbnailId`. Fetches the thumbnail from `GET /api/thumbnails/{thumbnail_id}` on first visit (cache-hits via `selectedThumbnail` on subsequent visits). Shows the full image with download buttons for all three aspect ratios (YouTube, Shorts, Square). Includes a **Delete thumbnail** button that opens `ConfirmDeleteModal` and calls `DELETE /api/thumbnails/{thumbnail_id}` on confirmation, then navigates back to the parent job.
+
+#### `ConfirmDeleteModal.tsx`
+Reusable confirmation popup rendered via a `position: fixed` overlay with backdrop blur. Accepts `title`, `description`, `onConfirm`, `onCancel`, and `loading` props. Dismissible via the Cancel button, backdrop click, or Escape key (all disabled while a delete is in flight). The Delete button shows a spinner during the async call.
+
+#### `ThumbnailDownloadOverlay.tsx`
+Hover overlay rendered on thumbnail cards in `JobDetail` and `History`. Shows download buttons for each aspect ratio and a "View details" link that navigates to `/thumbnails/:thumbnailId`.
 
 #### `TopNav.tsx`
-Persistent navigation bar. Fetches the credit balance from `GET /api/users/credits` on mount and whenever `screen` changes (ensuring the count is refreshed after a job completes). The credits pill turns red when the balance reaches 0. Includes theme toggle, user avatar (first letter of name), and logout button.
+Persistent navigation bar. Fetches the credit balance from `GET /api/users/credits` on mount and on route changes (ensuring the count is refreshed after a job completes). The credits pill turns red when the balance reaches 0. Includes theme toggle, user avatar (first letter of name), and logout button.
+
+#### `ToastContainer.tsx`
+Renders transient success / warning / error / info toasts driven by `useToastStore`. Toasts auto-dismiss after a few seconds and can be dismissed manually.
 
 #### `BlobField.tsx`
 Decorative animated background. Can be toggled off via `showBlobs` in the store.
@@ -307,9 +343,13 @@ All endpoints are prefixed with `/api`.
 | `GET` | `/users/credits` | Bearer | Current credit balance |
 | `POST` | `/upload-headshot` | — | Upload image, returns ImageKit URL |
 | `POST` | `/jobs` | Bearer | Create a new generation job |
+| `GET` | `/jobs` | Bearer | List all jobs for the current user |
 | `GET` | `/jobs/{job_id}` | — | Poll job + thumbnail status |
 | `GET` | `/jobs/{job_id}/stream` | — | SSE stream of thumbnail events |
+| `DELETE` | `/jobs/{job_id}` | Bearer | Delete a job and all its thumbnails |
 | `GET` | `/thumbnails` | Bearer | Uploaded thumbnails for the user |
+| `GET` | `/thumbnails/{thumbnail_id}` | Bearer | Single thumbnail detail |
+| `DELETE` | `/thumbnails/{thumbnail_id}` | Bearer | Delete a single thumbnail |
 
 ### Job lifecycle
 
